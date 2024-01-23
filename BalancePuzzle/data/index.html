@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+  <link href="./reinvented-color-wheel.min.css" rel="stylesheet">
+  <script src="./reinvented-color-wheel.min.js"></script>
+</head>
+<body class="container">
+  <nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">Smart lights</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="settings.html">Settings</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <div id="mainContainer" class="">
+    <input type="range" id="brightness" min="0" max="255" value="128" autocomplete="off" onchange="debounceChangeColour()" />
+    <div id="colourWheelContainer"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+  <script>
+    const brightnessSlider = document.getElementById("brightness");
+    const debounceChangeColour = debounce(() => sendColourData());
+
+    function debounce(func, timeout = 100) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+      };
+    }
+
+    function sendColourData() {
+      const brightness = brightnessSlider.value;
+      
+      const changeColourRequest = fetch("/api/setcolour", {
+        method: "POST",
+        contentType: "application/json",
+        body: JSON.stringify({
+          brightness: parseInt(brightness),
+          colour: parseInt(colorWheel.hex.replace('#', '0x'))
+        })
+      });
+    }
+
+    var colorWheel = new ReinventedColorWheel({
+    // appendTo is the only required property. specify the parent element of the color wheel.
+    appendTo: document.getElementById("colourWheelContainer"),
+    hex: "#FFFFFF",
+
+    // appearance
+    wheelDiameter: 400,
+    wheelThickness: 40,
+    handleDiameter: 16,
+    wheelReflectsSaturation: true,
+
+    // handler
+    onChange: function (color) {
+      debounceChangeColour();
+    },
+  });
+  </script>
+</body>
+</html>

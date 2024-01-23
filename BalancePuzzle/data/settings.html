@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+  <style>
+    #secondRelaySettings {
+      display: none;
+    }
+
+    .validation-error {
+      color:red;
+      font-style: italic;
+      font-size: 0.8em;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body class="container">
+  <nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">Smart lights</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="settings.html">Settings</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="">
+    <h1>Device setup</h1>
+    <div>
+      <div class="row g-3">
+        <div class="mb-3">
+          <label for="devicename" class="form-label">Device Name:</label>
+          <input type="text" id="devicename" name="devicename" placeholder="Device name" value="%DEVICE_NAME%" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" autocomplete="off"  class="form-control" aria-describedby="deviceNameHelp" maxlength="32" />
+        </div>
+        
+        <div class="col-auto">
+          <label for="firstRelayPort" class="form-label">LED pin number:</label>
+          <input type="number" id="ledpin" name="ledpin" placeholder="LED PIN" value="" autocomplete="off"  class="form-control" onchange="checkValid()" onkeypress="checkValid()" onpaste="checkValid()" oninput="checkValid()" required />
+        </div>
+        <div class="validation-error hidden" id="ledpinValidation">
+          Valid pins are: <pre>4, 13, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33</pre>
+        </div>
+        <div><button id="btnSave" type="submit" disabled="disabled" class="btn btn-primary">Save settings</button></div>
+        <br/>
+        <div><button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#confirmResetSettingsModal">Reset wifi settings</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm reset settings Modal -->
+  <div class="modal fade" id="confirmResetSettingsModal" tabindex="-1" aria-labelledby="resetSettingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="resetSettingsModalLabel">Reset settings?</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          Are you sure you want to reset the device settings? You will need to reconfigure the device again.
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+          <button type="button" id="btnReset" class="btn btn-primary" data-bs-dismiss="modal">Yes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSettings = %START_SETTINGS%;
+
+    const devicename = document.getElementById("devicename");
+    const ledpin = document.getElementById("ledpin");
+
+    devicename.value = currentSettings.devicename;
+    ledpin.value = currentSettings.ledpin;
+    firstRelayPort.value = currentSettings.relay1Pin;
+
+    hasSecondRelay.checked = parseInt(currentSettings.hasSecondRelay);
+    secondRelayName.value = currentSettings.relay2Name;
+    secondRelayPort.value = currentSettings.relay2Pin;
+
+    toggleVisibileStateOfSecondRelay();
+    checkValid();
+
+    hasSecondRelay.addEventListener('change', (event) => {
+      toggleVisibileStateOfSecondRelay();
+    });
+
+    const btnResetSettings = document.getElementById("btnReset");
+    btnResetSettings.addEventListener("click", async (event) => {
+      const request = await fetch("/api/resetsettings");
+    });
+
+    const btnSave = document.getElementById("btnSave");
+    btnSave.addEventListener("click", async (event) => {
+      await saveSettings();
+    });
+
+    async function saveSettings() {
+      const saveRequest = await fetch("/api/savesettings", {
+        method: "POST",
+        contentType: "application/json",
+        body: JSON.stringify({
+          devicename: devicename.value,
+          relay1pin: parseInt(firstRelayPort.value),
+          relay1name: firstRelayName.value,
+          relay2enabled: hasSecondRelay.checked,
+          relay2pin: parseInt(secondRelayPort.value),
+          relay2name: secondRelayName.value
+        })
+      });
+    }
+
+    function toggleVisibileStateOfSecondRelay() {
+      const secondRelaySettings = document.getElementById("secondRelaySettings");
+      secondRelaySettings.style.display = hasSecondRelay.checked ? "flex" : "none";
+    }
+
+    function checkValid() {
+      const safePins = [4, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33];
+
+      const btnSave = document.getElementById("btnSave");
+      let invalid = !(devicename.value);
+
+      if (safePins.indexOf(parseInt(firstRelayPort.value)) < 0) {
+        firstRelayPortValidation.classList.remove("hidden");
+        invalid = true;
+      } else {
+        firstRelayPortValidation.classList.add("hidden");
+      }
+
+      if (hasSecondRelay.checked) {
+        if (safePins.indexOf(parseInt(secondRelayPort.value)) < 0) {
+          secondRelayPortValidation.classList.remove("hidden");
+          invalid = true;
+        } else {
+          secondRelayPortValidation.classList.add("hidden");
+        }
+
+        if (secondRelayPort.value == firstRelayPort.value) {
+          const duplicatePinValidations = document.getElementsByClassName("duplicatepins");
+          Array.from(duplicatePinValidations).forEach(elem => elem.classList.remove("hidden"));
+
+          invalid = true;
+        } else {
+          const duplicatePinValidations = document.getElementsByClassName("duplicatepins");
+          Array.from(duplicatePinValidations).forEach(elem => elem.classList.add("hidden"));
+        }
+      }
+
+      btnSave.disabled = invalid;
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+</body>
+</html>
