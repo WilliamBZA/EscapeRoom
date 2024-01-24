@@ -10,9 +10,9 @@
 #include "Timer.h"
 
 #include <FastLED.h>
-// Total: 82
-// Outer ring: 33
-// Second ring: 25
+// Total: 82                 4
+// Outer ring: 33        3  2/5  1
+// Second ring: 25           6
 // Inner ring: 18
 // Cross: 6
 #define LED_COUNT 82
@@ -380,6 +380,13 @@ int outterDegreeOffset = 8; // 3, 10
 int middleDegreeOffset = 3;
 int innerDegreeOffset = 0;
 
+double crossDegreeOverlap = 15 / 2.0;
+int crossDegreeOffset = 10;
+int crossLeftDegree = 90;
+int crossBottomDegree = 180;
+int crossRightDegree = 270;
+int crossTopDegree = 360;
+
 void loop() {
   ArduinoOTA.handle();
 
@@ -387,9 +394,25 @@ void loop() {
     leds[x] = CRGB::Black;
   }
 
-  leds[(int)floor(33 * ((degree + outterDegreeOffset) % 360) / 360.0)] = CRGB::Blue; // outer ring
-  leds[33 + (int)floor(25 * ((degree + middleDegreeOffset) % 360) / 360.0)] = CRGB::Red; // middle ring
-  leds[33 + 25 + 17 - (int)floor(18 * ((degree + innerDegreeOffset) % 360) / 360.0)] = CRGB::Green; // inner ring
+  leds[(int)floor(33 * ((degree + outterDegreeOffset) % 360) / 360.0)] = CHSV(160, 255, 255); // outer ring
+  leds[33 + (int)floor(25 * ((degree + middleDegreeOffset) % 360) / 360.0)] = CHSV(0, 255, 255); // middle ring
+  leds[33 + 25 + 17 - (int)floor(18 * ((degree + innerDegreeOffset) % 360) / 360.0)] = CHSV(96, 255, 255); // inner ring
+
+/*  Cross light order
+ *      4
+ *   3 2/5 1
+ *      6
+ */
+
+  // Across, 90 --> 180
+  leds[33 + 25 + 17 + 3] = (abs(degree + crossDegreeOffset - crossLeftDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 90 degrees, left
+  // leds[33 + 25 + 17 + 2] = CHSV(224, 255, 255); // center, underneath
+  leds[33 + 25 + 17 + 1] = (abs(degree + crossDegreeOffset - crossRightDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, right
+
+  // Vertical, 0 --> 180
+  leds[33 + 25 + 17 + 4] = (abs((degree + crossDegreeOffset - crossTopDegree) % 360) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 0 degrees, top
+  leds[33 + 25 + 17 + 5] = CHSV(224, 255, 255); // center
+  leds[33 + 25 + 17 + 6] = (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, bottom
 
   degree = (millis() / 20) % 360;
 
