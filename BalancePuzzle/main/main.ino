@@ -10,11 +10,7 @@
 #include "Timer.h"
 
 #include <FastLED.h>
-// Total: 82                 4
-// Outer ring: 33        3  2/5  1
-// Second ring: 25           6
-// Inner ring: 18
-// Cross: 6
+
 #define LED_COUNT 82
 #define LED_PIN 14
 
@@ -387,16 +383,62 @@ int crossBottomDegree = 180;
 int crossRightDegree = 270;
 int crossTopDegree = 360;
 
+// Total: 82                 4
+// Outer ring: 33        3  2/5  1
+// Second ring: 25           6
+// Inner ring: 18
+// Cross: 6
+
+int outerRing = 33;
+int secondRing = 25;
+int innerRing = 18;
+int cross = 6;
+
+int degreesFarFromZero = 45; // the tilt away
+int maxDegreesFromZero = 45;
+int minDegreesFromZero = 5;
+
 void loop() {
   ArduinoOTA.handle();
+
+  degree = (millis() / 20) % 360;
 
   for (int x = 0; x < LED_COUNT; x++) {
     leds[x] = CRGB::Black;
   }
 
-  leds[(int)floor(33 * ((degree + outterDegreeOffset) % 360) / 360.0)] = CHSV(160, 255, 255); // outer ring
-  leds[33 + (int)floor(25 * ((degree + middleDegreeOffset) % 360) / 360.0)] = CHSV(0, 255, 255); // middle ring
-  leds[33 + 25 + 17 - (int)floor(18 * ((degree + innerDegreeOffset) % 360) / 360.0)] = CHSV(96, 255, 255); // inner ring
+  // 45 = 3 lights; one on each side
+  // 5  = half lights - 2;
+  degreesFarFromZero = max(min(degreesFarFromZero, maxDegreesFromZero), minDegreesFromZero); // clamp to [5..45]
+
+  float lightsOnRatio = abs(1.0 * (degreesFarFromZero - minDegreesFromZero - maxDegreesFromZero) / (maxDegreesFromZero - minDegreesFromZero));
+
+  int numberOfOuterLightsOn = round(lightsOnRatio * (outerRing - 2) / 2);
+  int numberOfSecondLightsOn = round(lightsOnRatio * (secondRing - 2) / 2) + 2;
+  int numberOfInnerLightsOn = round(lightsOnRatio * (innerRing - 2) / 2) + 2;
+  
+  int outerCenter = (int)floor(33 * ((degree + outterDegreeOffset) % 360) / 360.0);
+  int secondCenter = 33 + (int)floor(25 * ((degree + middleDegreeOffset) % 360) / 360.0);
+  int innerCenter = 33 + 25 + 17 - (int)floor(18 * ((degree + innerDegreeOffset) % 360) / 360.0);
+
+  for (int x = 1; x <= numberOfOuterLightsOn / 2; x++) {
+    leds[(outerCenter + x) % outerRing] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 2.0) / numberOfOuterLightsOn));
+    leds[max((outerCenter - x) % outerRing, (outerCenter - x + outerRing) % outerRing)] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 2.0) / numberOfOuterLightsOn));
+  }
+
+  for (int x = 1; x <= numberOfSecondLightsOn / 2; x++) {
+    leds[(secondCenter + x - numberOfSecondLightsOn / 2 - 1) % secondRing + outerRing] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 2.0) / numberOfSecondLightsOn));
+    leds[max((secondCenter - x - numberOfSecondLightsOn / 2 - 1) % secondRing + outerRing, (secondCenter - x + secondRing - numberOfSecondLightsOn / 2 - 1) % secondRing + outerRing)] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 2.0) / numberOfSecondLightsOn));
+  }
+
+  for (int x = 1; x <= numberOfInnerLightsOn / 2; x++) {
+    leds[(outerRing + secondRing) + ((innerCenter - x + 1 - (numberOfInnerLightsOn / 2)) % innerRing)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 2.0) / numberOfInnerLightsOn));
+    leds[(outerRing + secondRing) + ((innerCenter + x + 1 - (numberOfInnerLightsOn / 2)) % innerRing)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 2.0) / numberOfInnerLightsOn));
+  }
+
+  leds[outerCenter] = CHSV(160, 255, 255); // outer ring
+  leds[secondCenter] = CHSV(0, 255, 255); // middle ring
+  leds[innerCenter] = CHSV(96, 255, 255); // inner ring
 
 /*  Cross light order
  *      4
@@ -413,17 +455,6 @@ void loop() {
   leds[33 + 25 + 17 + 4] = (abs((degree + crossDegreeOffset - crossTopDegree) % 360) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 0 degrees, top
   leds[33 + 25 + 17 + 5] = CHSV(224, 255, 255); // center
   leds[33 + 25 + 17 + 6] = (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, bottom
-
-  degree = (millis() / 20) % 360;
-
-  if (oldDegree != degree) {
-    oldDegree = degree;
-
-    //Serial.print("Degree: "); Serial.println(degree);
-    //Serial.print("Outer ring: "); Serial.println((int)floor(33 * ((degree + outterDegreeOffset) % 360) / 360.0));
-    //Serial.print("Middle ring: "); Serial.println(33 + (int)floor(25 * ((degree + middleDegreeOffset) % 360) / 360.0));
-    //Serial.print("Inner ring: "); Serial.println(33 + 25 + 17 - (int)floor(18 * ((degree + innerDegreeOffset) % 360) / 360.0));
-  }
 
   FastLED.show();
 
