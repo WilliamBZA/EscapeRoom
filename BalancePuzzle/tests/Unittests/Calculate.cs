@@ -4,13 +4,24 @@
     {
         public static int CalculateOffset(int currentLightNumber, int numberOfLightsInRing, int ringStartCount, int distanceOffCurrentLight)
         {
-            if (distanceOffCurrentLight < 0)
+            if (numberOfLightsInRing < 0)
             {
-                return currentLightNumber + distanceOffCurrentLight + (currentLightNumber + distanceOffCurrentLight <= ringStartCount ? numberOfLightsInRing : 0);
+                distanceOffCurrentLight = 0 - distanceOffCurrentLight;
+                numberOfLightsInRing = 0 - numberOfLightsInRing;
             }
 
-            var o = currentLightNumber - numberOfLightsInRing + distanceOffCurrentLight;
-            return o % numberOfLightsInRing + numberOfLightsInRing;
+            int offset = currentLightNumber - ringStartCount + distanceOffCurrentLight;
+            if (offset < 0)
+            {
+                offset += numberOfLightsInRing;
+            }
+
+            if (offset == 0)
+            {
+                return numberOfLightsInRing + ringStartCount;
+            }
+
+            return offset % numberOfLightsInRing + ringStartCount;
         }
     }
 }
