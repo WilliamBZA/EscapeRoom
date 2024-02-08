@@ -18,7 +18,7 @@
 
             if (offset == 0)
             {
-                return numberOfLightsInRing + ringStartCount;
+                return ringStartCount;
             }
 
             return offset % numberOfLightsInRing + ringStartCount;
