@@ -41,7 +41,7 @@ namespace Unittests
         public void PreviousLightWithWrapping()
         {
             var previousWrappedLight = Calculate.CalculateOffset(34, 25, 33, -1);
-            Assert.Equal(58, previousWrappedLight);
+            Assert.Equal(33, previousWrappedLight);
         }
     }
 }

@@ -3,6 +3,13 @@ namespace Unittests
     public class OuterRingTests
     {
         [Fact]
+        public void ShouldBeZeroBased()
+        {
+            var nextLight = Calculate.CalculateOffset(1, 33, 0, -1);
+            Assert.Equal(0, nextLight);
+        }
+
+        [Fact]
         public void NextLightInRingWithoutWrapping()
         {
             var nextLight = Calculate.CalculateOffset(10, 33, 0, 1);
@@ -12,8 +19,8 @@ namespace Unittests
         [Fact]
         public void NextLightInRingThatWraps()
         {
-            var nextWrappedLight = Calculate.CalculateOffset(33, 33, 0, 1);
-            Assert.Equal(1, nextWrappedLight);
+            var nextWrappedLight = Calculate.CalculateOffset(32, 33, 0, 1);
+            Assert.Equal(0, nextWrappedLight);
         }
 
         [Fact]
@@ -40,8 +47,8 @@ namespace Unittests
         [Fact]
         public void PreviousLightWithWrapping()
         {
-            var previousWrappedLight = Calculate.CalculateOffset(1, 33, 0, -1);
-            Assert.Equal(33, previousWrappedLight);
+            var previousWrappedLight = Calculate.CalculateOffset(0, 33, 0, -1);
+            Assert.Equal(32, previousWrappedLight);
         }
     }
 }

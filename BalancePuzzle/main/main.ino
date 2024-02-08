@@ -394,14 +394,36 @@ int secondRing = 25;
 int innerRing = 18;
 int cross = 6;
 
-int degreesFarFromZero = 45; // the tilt away
+int degreesFarFromZero = 5; // the tilt away
 int maxDegreesFromZero = 45;
 int minDegreesFromZero = 5;
+
+int CalculateOffset(int currentLightNumber, int numberOfLightsInRing, int ringStartCount, int distanceOffCurrentLight) {
+    if (numberOfLightsInRing < 0) {
+        distanceOffCurrentLight = 0 - distanceOffCurrentLight;
+        numberOfLightsInRing = 0 - numberOfLightsInRing;
+    }
+
+    int offset = currentLightNumber - ringStartCount + distanceOffCurrentLight;
+    if (offset < 0) {
+        offset += numberOfLightsInRing;
+    }
+
+    if (offset == 0) {
+        return ringStartCount;
+    }
+
+    return offset % numberOfLightsInRing + ringStartCount;
+}
 
 void loop() {
   ArduinoOTA.handle();
 
   degree = (millis() / 20) % 360;
+
+  if (degree != oldDegree) {
+    oldDegree = degree;
+  
 
   for (int x = 0; x < LED_COUNT; x++) {
     leds[x] = CRGB::Black;
@@ -422,18 +444,18 @@ void loop() {
   int innerCenter = 33 + 25 + 17 - (int)floor(18 * ((degree + innerDegreeOffset) % 360) / 360.0);
 
   for (int x = 1; x <= numberOfOuterLightsOn / 2; x++) {
-    leds[(outerCenter + x) % outerRing] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 2.0) / numberOfOuterLightsOn));
-    leds[max((outerCenter - x) % outerRing, (outerCenter - x + outerRing) % outerRing)] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 2.0) / numberOfOuterLightsOn));
+    leds[CalculateOffset(outerCenter, 33, 0, x)] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 2.0) / numberOfOuterLightsOn));
+    leds[CalculateOffset(outerCenter, 33, 0, -x)] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 2.0) / numberOfOuterLightsOn));
   }
 
   for (int x = 1; x <= numberOfSecondLightsOn / 2; x++) {
-    leds[(secondCenter + x - numberOfSecondLightsOn / 2 - 1) % secondRing + outerRing] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 2.0) / numberOfSecondLightsOn));
-    leds[max((secondCenter - x - numberOfSecondLightsOn / 2 - 1) % secondRing + outerRing, (secondCenter - x + secondRing - numberOfSecondLightsOn / 2 - 1) % secondRing + outerRing)] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 2.0) / numberOfSecondLightsOn));
+    leds[CalculateOffset(secondCenter, 25, 33, x)] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 2.0) / numberOfSecondLightsOn));
+    leds[CalculateOffset(secondCenter, 25, 33, -x)] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 2.0) / numberOfSecondLightsOn));
   }
 
   for (int x = 1; x <= numberOfInnerLightsOn / 2; x++) {
-    leds[(outerRing + secondRing) + ((innerCenter - x + 1 - (numberOfInnerLightsOn / 2)) % innerRing)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 2.0) / numberOfInnerLightsOn));
-    leds[(outerRing + secondRing) + ((innerCenter + x + 1 - (numberOfInnerLightsOn / 2)) % innerRing)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 2.0) / numberOfInnerLightsOn));
+    leds[CalculateOffset(innerCenter, -18, 58, x)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 2.0) / numberOfInnerLightsOn));
+    leds[CalculateOffset(innerCenter, -18, 58, -x)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 2.0) / numberOfInnerLightsOn));
   }
 
   leds[outerCenter] = CHSV(160, 255, 255); // outer ring
@@ -457,6 +479,7 @@ void loop() {
   leds[33 + 25 + 17 + 6] = (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, bottom
 
   FastLED.show();
+  }
 
   dnsServer.processNextRequest();
 }
