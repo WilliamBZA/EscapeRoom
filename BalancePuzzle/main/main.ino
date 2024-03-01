@@ -8,6 +8,8 @@
 #include <DNSServer.h>
 #include "time.h"
 #include "Timer.h"
+#include "I2Cdev.h"
+#include "MPU6050_6Axis_MotionApps20.h"
 
 #include <FastLED.h>
 
@@ -25,6 +27,9 @@ CRGB leds[LED_COUNT];
 #include <ESPmDNS.h>
 #endif
 
+#define INTERRUPT_PIN 15 // use pin 15 on ESP8266
+bool dmpReady = false;  // set true if DMP init was successful
+
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 7200;
 
@@ -40,6 +45,35 @@ int degree = 0;
 
 int brightness = 100;
 int colour = 0xFFFFFF;
+
+MPU6050 mpu;
+
+int oldDegree = -1;
+int outterDegreeOffset = 8; // 3, 10
+int middleDegreeOffset = 3;
+int innerDegreeOffset = 0;
+
+double crossDegreeOverlap = 15 / 2.0;
+int crossDegreeOffset = 10;
+int crossLeftDegree = 90;
+int crossBottomDegree = 180;
+int crossRightDegree = 270;
+int crossTopDegree = 360;
+
+// Total: 82                 4
+// Outer ring: 33        3  2/5  1
+// Second ring: 25           6
+// Inner ring: 18
+// Cross: 6
+
+int outerRing = 33;
+int secondRing = 25;
+int innerRing = 18;
+int cross = 6;
+
+int degreesFarFromZero = 45; // the tilt away
+int maxDegreesFromZero = 45;
+int minDegreesFromZero = 5;
 
 bool connectToWifi() {
   WiFi.disconnect();
@@ -188,6 +222,9 @@ void configureUrlRoutes() {
       ESP.restart();
     } else if (request->url() == "/api/setcolour") {
       setColour(request, data);
+      request->send(200, "text/json", "OK");
+    } else if (request->url() == "calibrate") {
+      calibrateMPU();
       request->send(200, "text/json", "OK");
     } else {
       request->send(404);
@@ -367,36 +404,131 @@ void setup() {
   configureUrlRoutes();
   configureOTA();
 
+  mpu_setup();
+
   server.begin();
   Serial.println("Setup complete");
 }
 
-int oldDegree = -1;
-int outterDegreeOffset = 8; // 3, 10
-int middleDegreeOffset = 3;
-int innerDegreeOffset = 0;
+volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
+void ICACHE_RAM_ATTR dmpDataReady() {
+    mpuInterrupt = true;
+}
 
-double crossDegreeOverlap = 15 / 2.0;
-int crossDegreeOffset = 10;
-int crossLeftDegree = 90;
-int crossBottomDegree = 180;
-int crossRightDegree = 270;
-int crossTopDegree = 360;
+void mpu_setup() {
+  uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
+  uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 
-// Total: 82                 4
-// Outer ring: 33        3  2/5  1
-// Second ring: 25           6
-// Inner ring: 18
-// Cross: 6
+  // join I2C bus (I2Cdev library doesn't do this automatically)
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+  Wire.begin();
+  Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
+#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+  Fastwire::setup(400, true);
+#endif
 
-int outerRing = 33;
-int secondRing = 25;
-int innerRing = 18;
-int cross = 6;
+  // initialize device
+  Serial.println(F("Initializing I2C devices..."));
+  mpu.initialize();
+  pinMode(INTERRUPT_PIN, INPUT);
 
-int degreesFarFromZero = 5; // the tilt away
-int maxDegreesFromZero = 45;
-int minDegreesFromZero = 5;
+  // verify connection
+  Serial.println(F("Testing device connections..."));
+  Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+
+  // load and configure the DMP
+  Serial.println(F("Initializing DMP..."));
+  devStatus = mpu.dmpInitialize();
+
+  // supply your own gyro offsets here, scaled for min sensitivity
+  mpu.setXGyroOffset(220);
+  mpu.setYGyroOffset(76);
+  mpu.setZGyroOffset(-85);
+  mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+
+  // make sure it worked (returns 0 if so)
+  if (devStatus == 0) {
+    // turn on the DMP, now that it's ready
+    Serial.println(F("Enabling DMP..."));
+    mpu.setDMPEnabled(true);
+
+    // enable Arduino interrupt detection
+    Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
+    attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
+    mpuIntStatus = mpu.getIntStatus();
+
+    // set our DMP Ready flag so the main loop() function knows it's okay to use it
+    Serial.println(F("DMP ready! Waiting for first interrupt..."));
+    dmpReady = true;
+  } else {
+    // ERROR!
+    // 1 = initial memory load failed
+    // 2 = DMP configuration updates failed
+    // (if it's going to break, usually the code will be 1)
+    Serial.print(F("DMP Initialization failed (code "));
+    Serial.print(devStatus);
+    Serial.println(F(")"));
+  }
+}
+
+// Modified version of Adafruit BN0555 library to convert Quaternion to world angles the way we need
+// The math is a little different here compared to Adafruit's version to work the way I needed for this project
+VectorFloat QtoEulerAngle(Quaternion qt) {
+  VectorFloat ret;
+  double sqw = qt.w * qt.w;
+  double sqx = qt.x * qt.x;
+  double sqy = qt.y * qt.y;
+  double sqz = qt.z * qt.z;
+
+  ret.x = atan2(2.0 * (qt.x * qt.y + qt.z * qt.w), (sqx - sqy - sqz + sqw));
+  ret.y = asin(2.0 * (qt.x * qt.z - qt.y * qt.w) / (sqx + sqy + sqz + sqw));  //Adafruit uses -2.0 *..
+  ret.z = atan2( 2.0 * (qt.y * qt.z + qt.x * qt.w), (-sqx - sqy + sqz + sqw));
+
+  // Added to convert Radian to Degrees
+  ret.x = ret.x * 180 / PI;
+  ret.y = ret.y * 180 / PI;
+  ret.z = ret.z * 180 / PI;
+  
+  return ret;
+}
+
+void mpu_loop() {
+  Quaternion quaternion;           // [w, x, y, z]         quaternion container
+  uint8_t fifoBuffer[64]; // FIFO storage buffer
+  
+  // if programming failed, don't try to do anything
+  if (!dmpReady) return;
+
+  // Get the Quaternion values from DMP buffer
+  if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+    mpu.dmpGetQuaternion(&quaternion, fifoBuffer);
+
+    // Calc angles converting Quaternion to Euler this was giving more stable acurate results compared to
+    // getting Euler directly from DMP. I think Quaternion conversion takes care of gimble lock.
+    VectorFloat ea = QtoEulerAngle(quaternion);
+
+    double x = cos(ea.y * PI / 180) * cos(ea.z * PI / 180);
+    double z = sin(ea.y * PI / 180) * cos(ea.y * PI / 180);
+    double y = sin(ea.z * PI / 180);
+
+    degreesFarFromZero = 300 * (y*y + z*z);
+    degree = round(90 + atan(y / z) * 180 / PI);
+
+    if (z < 0) {
+      degree += 180;
+    }
+  }
+}
+
+bool mpuCalibrated = false;
+void calibrateMPU() {
+  mpu.CalibrateAccel(6);
+  mpu.CalibrateGyro(6);
+
+  mpuCalibrated = true;
+
+  Serial.println("Calibration complete.");
+}
 
 int CalculateOffset(int currentLightNumber, int numberOfLightsInRing, int ringStartCount, int distanceOffCurrentLight) {
     if (numberOfLightsInRing < 0) {
@@ -417,9 +549,14 @@ int CalculateOffset(int currentLightNumber, int numberOfLightsInRing, int ringSt
 }
 
 void loop() {
+  if (!mpuCalibrated) {
+    calibrateMPU();
+  }
+  
   ArduinoOTA.handle();
 
-  degree = (millis() / 20) % 360;
+  bool centerLightOn = false;
+  //degree = (millis() / 20) % 360;
 
   if (degree != oldDegree) {
     oldDegree = degree;
@@ -435,9 +572,9 @@ void loop() {
 
   float lightsOnRatio = abs(1.0 * (degreesFarFromZero - minDegreesFromZero - maxDegreesFromZero) / (maxDegreesFromZero - minDegreesFromZero));
 
-  int numberOfOuterLightsOn = round(lightsOnRatio * (outerRing - 2) / 2);
-  int numberOfSecondLightsOn = round(lightsOnRatio * (secondRing - 2) / 2) + 2;
-  int numberOfInnerLightsOn = round(lightsOnRatio * (innerRing - 2) / 2) + 2;
+  int numberOfOuterLightsOn = round(lightsOnRatio * (outerRing - 2) / 2) + 2;
+  int numberOfSecondLightsOn = round(lightsOnRatio * (secondRing - 2) / 2);
+  int numberOfInnerLightsOn = round(lightsOnRatio * (innerRing - 2) / 2);
   
   int outerCenter = (int)floor(33 * ((degree + outterDegreeOffset) % 360) / 360.0);
   int secondCenter = 33 + (int)floor(25 * ((degree + middleDegreeOffset) % 360) / 360.0);
@@ -475,11 +612,18 @@ void loop() {
 
   // Vertical, 0 --> 180
   leds[33 + 25 + 17 + 4] = (abs((degree + crossDegreeOffset - crossTopDegree) % 360) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 0 degrees, top
-  leds[33 + 25 + 17 + 5] = CHSV(224, 255, 255); // center
   leds[33 + 25 + 17 + 6] = (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, bottom
+
+  centerLightOn = (abs((degree + crossDegreeOffset - crossTopDegree) % 360) < crossDegreeOverlap) || (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap) || 
+                  (abs(degree + crossDegreeOffset - crossLeftDegree) < crossDegreeOverlap) || (abs(degree + crossDegreeOffset - crossRightDegree) < crossDegreeOverlap);
+
+  if (centerLightOn) {
+    leds[33 + 25 + 17 + 5] = CHSV(224, 255, 255); // center
+  }
 
   FastLED.show();
   }
 
   dnsServer.processNextRequest();
+  mpu_loop();
 }
