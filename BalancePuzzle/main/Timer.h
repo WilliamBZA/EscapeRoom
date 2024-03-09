@@ -10,8 +10,10 @@ class Timer {
     boolean IsRunning();
     void Start();
     void Stop();
+    long GetCurrentProgress();
+    long GetTriggerInterval();
 
-  private:
+  protected:
     long lastTriggerTime;
     long triggerInterval;
 };
