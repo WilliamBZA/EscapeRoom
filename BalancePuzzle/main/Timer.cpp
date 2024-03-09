@@ -19,6 +19,14 @@ boolean Timer::IsRunning() {
   return lastTriggerTime != -1;
 }
 
+long Timer::GetCurrentProgress() {
+  return millis() - lastTriggerTime;
+}
+
+long Timer::GetTriggerInterval() {
+  return triggerInterval;
+}
+
 void Timer::Start() {
   lastTriggerTime = millis();
 }

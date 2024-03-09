@@ -2,16 +2,16 @@
 #define WEBSERVER_H
 #include <ESPAsyncWebServer.h>
 #include <ArduinoOTA.h>
-#include <FS.h>
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
 #include <DNSServer.h>
+#include <FastLED.h>
 #include "time.h"
 #include "Timer.h"
+#include "CalibrationTimer.h"
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
-
-#include <FastLED.h>
+#include "settings.h"
 
 #define LED_COUNT 82
 #define LED_PIN 14
@@ -23,7 +23,6 @@ CRGB leds[LED_COUNT];
 #endif
 
 #if defined(ESP32)
-#include <SPIFFS.h>
 #include <ESPmDNS.h>
 #endif
 
@@ -36,19 +35,14 @@ const long  gmtOffset_sec = 7200;
 DNSServer dnsServer;
 AsyncWebServer server(80);
 
-String deviceName = "LevelPuzzle";
-String ssid = "";
-String wifiPassword = "";
+Settings* settings = new Settings();
+
 bool isConnected = false;
 
 int degree = 0;
 
-int brightness = 100;
-int colour = 0xFFFFFF;
-
 MPU6050 mpu;
 
-int oldDegree = -1;
 int outterDegreeOffset = 8; // 3, 10
 int middleDegreeOffset = 3;
 int innerDegreeOffset = 0;
@@ -73,20 +67,30 @@ int cross = 6;
 
 int degreesFarFromZero = 45; // the tilt away
 int maxDegreesFromZero = 45;
-int minDegreesFromZero = 5;
+int minDegreesFromZero = 0;
+
+CalibrationTimer calibrationTimer(3, mpu, settings, [](int percentageComplete, CRGB colour) {
+  auto numberToPutOn = ((100 - percentageComplete) * outerRing / 100);
+
+  for (auto x = 0; x < numberToPutOn; x++) {
+    leds[x] = colour;
+  }
+
+  FastLED.show();
+});
 
 bool connectToWifi() {
   WiFi.disconnect();
   WiFi.mode(WIFI_OFF);
 
-  if (ssid != "") {
+  if (settings->ssid != "") {
     Serial.println("Using saved SSID and Password to attempt WiFi Connection.");
-    Serial.print("Saved SSID is "); Serial.println(ssid);
-    Serial.print("Saved Password is "); Serial.println(wifiPassword);
+    Serial.print("Saved SSID is "); Serial.println(settings->ssid);
+    Serial.print("Saved Password is "); Serial.println(settings->wifiPassword);
 
     WiFi.mode(WIFI_STA);
     Serial.println("\nConnecting to WiFi Network ..");
-    WiFi.begin(ssid, wifiPassword);
+    WiFi.begin(settings->ssid, settings->wifiPassword);
 
     int attempt = 0;
     while(WiFi.status() != WL_CONNECTED){
@@ -127,7 +131,7 @@ void configureCaptivePortal() {
 
 void configureOTA() {
   // Make sure the flash size matches. For ESP8266 12F it should be 4MB.
-  ArduinoOTA.setHostname(deviceName.c_str());
+  ArduinoOTA.setHostname(settings->deviceName.c_str());
 
   ArduinoOTA.onStart([]() {
     String type;
@@ -162,23 +166,23 @@ void configureOTA() {
 }
 
 String getSettings() {
-  String settings = "{\"devicename\": \"";
-  settings += deviceName;
+  String response = "{\"devicename\": \"";
+  response += settings->deviceName;
 
   if (isConnected) { // only get the time if connected to the internet
-    settings += "\", \"deviceTime\": \"";
-    settings += getLocalTime();
+    response += "\", \"deviceTime\": \"";
+    response += getLocalTime();
   }
 
-  settings += "\"}";
-  return settings;
+  response += "\"}";
+  return response;
 }
 
 String valueProcessor(const String& var) {
   Serial.print("Var: "); Serial.println(var);
 
   if (var == "DEVICE_NAME") {
-    return deviceName;
+    return settings->deviceName;
   }
 
   if (var == "START_SETTINGS") {
@@ -192,13 +196,9 @@ void configureUrlRoutes() {
   server.serveStatic("/", SPIFFS, "").setTemplateProcessor(valueProcessor).setDefaultFile("index.html");
 
   server.on("/api/resetsettings", HTTP_GET, [](AsyncWebServerRequest * request) {
-    Serial.print("Resetting settings..."); Serial.println("");
+    Serial.print("Resetting settings->.."); Serial.println("");
     
-    ssid = "";
-    wifiPassword = "";
-    deviceName = "";
-
-    saveCurrentSettings();
+    settings->resetSettings();
 
     request->send(200, "text/json", "OK");
     delay(500);
@@ -206,7 +206,7 @@ void configureUrlRoutes() {
   });
 
   server.on("/api/currentsettings", HTTP_GET, [](AsyncWebServerRequest * request) {
-    Serial.print("Sending settings..."); Serial.println("");
+    Serial.print("Sending settings->.."); Serial.println("");
     request->send(200, "text/json", getSettings());
   });
 
@@ -220,11 +220,8 @@ void configureUrlRoutes() {
 
       delay(500);
       ESP.restart();
-    } else if (request->url() == "/api/setcolour") {
-      setColour(request, data);
-      request->send(200, "text/json", "OK");
     } else if (request->url() == "calibrate") {
-      calibrateMPU();
+      calibrateTargets();
       request->send(200, "text/json", "OK");
     } else {
       request->send(404);
@@ -265,35 +262,8 @@ void onUpload(AsyncWebServerRequest *request, String filename, size_t index, uin
   }
 }
 
-void setColour(AsyncWebServerRequest *request, uint8_t *data) {
-  Serial.println("Setting colour...");
-
-  StaticJsonDocument<256> doc;
-
-  DeserializationError error = deserializeJson(doc, (const char *)data, request->contentLength());
-
-  if (error) {
-    Serial.print("deserializeJson() failed: ");
-    Serial.println(error.c_str());
-    return;
-  }
-
-  Serial.println("Extracting colours");
-  
-  int receivedBrightness = doc["brightness"];
-  Serial.print("Brightness: "); Serial.println(receivedBrightness);
-  int receivedColour = doc["colour"];
-  Serial.print("Colour: "); Serial.println(receivedColour);
-  
-  brightness = receivedBrightness;
-  colour = receivedColour;
-
-
-  saveCurrentSettings();
-}
-
 void saveSettings(AsyncWebServerRequest *request, uint8_t *data) {
-  Serial.println("Saving settings...");
+  Serial.println("Saving settings->..");
 
   StaticJsonDocument<256> doc;
 
@@ -309,60 +279,13 @@ void saveSettings(AsyncWebServerRequest *request, uint8_t *data) {
   const char* settingsSSID = doc["ssid"];
   const char* settingsWifiPassword = doc["wifipassword"];
 
-  deviceName = devicename;
-  ssid = settingsSSID;
-  wifiPassword = settingsWifiPassword;
+  settings->deviceName = devicename;
+  settings->ssid = settingsSSID;
+  settings->wifiPassword = settingsWifiPassword;
 
-  Serial.print("Device name: "); Serial.println(deviceName);
+  Serial.print("Device name: "); Serial.println(settings->deviceName);
 
-  saveCurrentSettings();
-}
-
-void saveCurrentSettings() {
-  File settingsFile = SPIFFS.open("/settings.json", "w");
-  StaticJsonDocument<1024> settingsDoc;
-  
-  settingsDoc["devicename"] = deviceName;
-  settingsDoc["ssid"] = ssid;
-  settingsDoc["wifipassword"] = wifiPassword;
-  settingsDoc["colour"] = colour;
-  settingsDoc["brightness"] = brightness;
-
-  if (serializeJson(settingsDoc, settingsFile) == 0) {
-    Serial.println("Failed to write to file");
-  }
-
-  settingsFile.close();
-}
-
-void loadDeviceSettings() {
-  File settingsFile = SPIFFS.open("/settings.json", "r");
-  if (!settingsFile) {
-    Serial.println("No settings file found");
-    deviceName = "UnknownDevice";
-    return;
-  }
-
-  StaticJsonDocument<384> doc;
-
-  DeserializationError error = deserializeJson(doc, settingsFile);
-  if (error) {
-    Serial.print("deserializeJson() failed: ");
-    Serial.println(error.c_str());
-    return;
-  }
-
-  const char* devicename = doc["devicename"];
-  const char* settingsSSID = doc["ssid"];
-  const char* settingsWifiPassword = doc["wifipassword"];
-
-  deviceName = devicename;
-  ssid = settingsSSID;
-  wifiPassword = settingsWifiPassword;
-
-  Serial.print("Device name: "); Serial.println(deviceName);
-
-  settingsFile.close();
+  settings->saveCurrentSettings();
 }
 
 String getLocalTime() {
@@ -381,16 +304,15 @@ String getLocalTime() {
 
 void setup() {
   Serial.begin(115200);
-
-  SPIFFS.begin();
+  while (!Serial) { }
 
   FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, LED_COUNT);
   FastLED.setBrightness(10);
 
-  loadDeviceSettings();
+  settings->loadDeviceSettings();
 
   if (connectToWifi()) {
-    String dnsName = deviceName;
+    String dnsName = settings->deviceName;
     dnsName.replace(" ", "");
     if (!MDNS.begin(dnsName)) {
       Serial.println("Error starting mDNS");
@@ -405,6 +327,8 @@ void setup() {
   configureOTA();
 
   mpu_setup();
+
+  calibrationTimer.Start();
 
   server.begin();
   Serial.println("Setup complete");
@@ -521,6 +445,7 @@ void mpu_loop() {
 }
 
 bool mpuCalibrated = false;
+
 void calibrateMPU() {
   mpu.CalibrateAccel(6);
   mpu.CalibrateGyro(6);
@@ -528,6 +453,14 @@ void calibrateMPU() {
   mpuCalibrated = true;
 
   Serial.println("Calibration complete.");
+}
+
+void calibrateTargets() {
+  calibrateMPU();
+
+  if (!calibrationTimer.IsRunning()) {
+    calibrationTimer.Start();
+  }
 }
 
 int CalculateOffset(int currentLightNumber, int numberOfLightsInRing, int ringStartCount, int distanceOffCurrentLight) {
@@ -548,51 +481,46 @@ int CalculateOffset(int currentLightNumber, int numberOfLightsInRing, int ringSt
     return offset % numberOfLightsInRing + ringStartCount;
 }
 
-void loop() {
-  if (!mpuCalibrated) {
-    calibrateMPU();
-  }
-  
-  ArduinoOTA.handle();
-
-  bool centerLightOn = false;
-  //degree = (millis() / 20) % 360;
-
-  if (degree != oldDegree) {
-    oldDegree = degree;
-  
-
+void turnAllLightsOff() {
   for (int x = 0; x < LED_COUNT; x++) {
     leds[x] = CRGB::Black;
   }
+}
+
+void lights_loop() {
+  bool centerLightOn = false;
+
+  turnAllLightsOff();
 
   // 45 = 3 lights; one on each side
   // 5  = half lights - 2;
-  degreesFarFromZero = max(min(degreesFarFromZero, maxDegreesFromZero), minDegreesFromZero); // clamp to [5..45]
+  degreesFarFromZero = max(min(degreesFarFromZero, maxDegreesFromZero), minDegreesFromZero); // clamp to [0..45]
 
   float lightsOnRatio = abs(1.0 * (degreesFarFromZero - minDegreesFromZero - maxDegreesFromZero) / (maxDegreesFromZero - minDegreesFromZero));
 
-  int numberOfOuterLightsOn = round(lightsOnRatio * (outerRing - 2) / 2) + 2;
-  int numberOfSecondLightsOn = round(lightsOnRatio * (secondRing - 2) / 2);
-  int numberOfInnerLightsOn = round(lightsOnRatio * (innerRing - 2) / 2);
+  // Serial.print("Degrees away: "); Serial.print(degreesFarFromZero); Serial.print("\tLightsOnRatio: "); Serial.println(lightsOnRatio);
+  
+  int numberOfOuterLightsOn = round(lightsOnRatio * (outerRing));
+  int numberOfSecondLightsOn = round(lightsOnRatio * (secondRing));
+  int numberOfInnerLightsOn = round(lightsOnRatio * (innerRing));
   
   int outerCenter = (int)floor(33 * ((degree + outterDegreeOffset) % 360) / 360.0);
   int secondCenter = 33 + (int)floor(25 * ((degree + middleDegreeOffset) % 360) / 360.0);
   int innerCenter = 33 + 25 + 17 - (int)floor(18 * ((degree + innerDegreeOffset) % 360) / 360.0);
 
   for (int x = 1; x <= numberOfOuterLightsOn / 2; x++) {
-    leds[CalculateOffset(outerCenter, 33, 0, x)] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 2.0) / numberOfOuterLightsOn));
-    leds[CalculateOffset(outerCenter, 33, 0, -x)] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 2.0) / numberOfOuterLightsOn));
+    leds[CalculateOffset(outerCenter, 33, 0, x)] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 1.3) / numberOfOuterLightsOn));
+    leds[CalculateOffset(outerCenter, 33, 0, -x)] = CHSV(160, 255, 255 * max(1.0 / numberOfOuterLightsOn, (numberOfOuterLightsOn - x * 1.3) / numberOfOuterLightsOn));
   }
 
   for (int x = 1; x <= numberOfSecondLightsOn / 2; x++) {
-    leds[CalculateOffset(secondCenter, 25, 33, x)] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 2.0) / numberOfSecondLightsOn));
-    leds[CalculateOffset(secondCenter, 25, 33, -x)] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 2.0) / numberOfSecondLightsOn));
+    leds[CalculateOffset(secondCenter, 25, 33, x)] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 1.3) / numberOfSecondLightsOn));
+    leds[CalculateOffset(secondCenter, 25, 33, -x)] = CHSV(0, 255, 255 * max(1.0 / numberOfSecondLightsOn, (numberOfSecondLightsOn - x * 1.3) / numberOfSecondLightsOn));
   }
 
   for (int x = 1; x <= numberOfInnerLightsOn / 2; x++) {
-    leds[CalculateOffset(innerCenter, -18, 58, x)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 2.0) / numberOfInnerLightsOn));
-    leds[CalculateOffset(innerCenter, -18, 58, -x)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 2.0) / numberOfInnerLightsOn));
+    leds[CalculateOffset(innerCenter, -18, 58, x)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 1.3) / numberOfInnerLightsOn));
+    leds[CalculateOffset(innerCenter, -18, 58, -x)] = CHSV(96, 255, 255 * max(1.0 / numberOfInnerLightsOn, (numberOfInnerLightsOn - x * 1.3) / numberOfInnerLightsOn));
   }
 
   leds[outerCenter] = CHSV(160, 255, 255); // outer ring
@@ -606,15 +534,15 @@ void loop() {
  */
 
   // Across, 90 --> 180
-  leds[33 + 25 + 17 + 3] = (abs(degree + crossDegreeOffset - crossLeftDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 90 degrees, left
+  leds[33 + 25 + 17 + 3] = (degreesFarFromZero == 0 || (abs(degree + crossDegreeOffset - crossLeftDegree) < crossDegreeOverlap)) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 90 degrees, left
   // leds[33 + 25 + 17 + 2] = CHSV(224, 255, 255); // center, underneath
-  leds[33 + 25 + 17 + 1] = (abs(degree + crossDegreeOffset - crossRightDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, right
+  leds[33 + 25 + 17 + 1] = (degreesFarFromZero == 0 || (abs(degree + crossDegreeOffset - crossRightDegree) < crossDegreeOverlap)) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, right
 
   // Vertical, 0 --> 180
-  leds[33 + 25 + 17 + 4] = (abs((degree + crossDegreeOffset - crossTopDegree) % 360) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 0 degrees, top
-  leds[33 + 25 + 17 + 6] = (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, bottom
+  leds[33 + 25 + 17 + 4] = (degreesFarFromZero == 0 || (abs((degree + crossDegreeOffset - crossTopDegree) % 360) < crossDegreeOverlap)) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 0 degrees, top
+  leds[33 + 25 + 17 + 6] = (degreesFarFromZero == 0 || (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap)) ? CHSV(224, 255, 255) : CHSV(224, 0, 0); // 180 degrees, bottom
 
-  centerLightOn = (abs((degree + crossDegreeOffset - crossTopDegree) % 360) < crossDegreeOverlap) || (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap) || 
+  centerLightOn = (degreesFarFromZero == 0) || (abs((degree + crossDegreeOffset - crossTopDegree) % 360) < crossDegreeOverlap) || (abs(degree + crossDegreeOffset - crossBottomDegree) < crossDegreeOverlap) || 
                   (abs(degree + crossDegreeOffset - crossLeftDegree) < crossDegreeOverlap) || (abs(degree + crossDegreeOffset - crossRightDegree) < crossDegreeOverlap);
 
   if (centerLightOn) {
@@ -622,8 +550,28 @@ void loop() {
   }
 
   FastLED.show();
-  }
+}
 
+void loop() {
+  if (calibrationTimer.IsRunning()) {
+    turnAllLightsOff();
+    calibrationTimer.calibration_loop();
+  } else {
+    if (!mpuCalibrated) {
+      mpuCalibrated = true;
+
+      mpu.setXGyroOffset(settings->offsets[0].xGyroOffset);
+      mpu.setYGyroOffset(settings->offsets[0].yGyroOffset);
+      mpu.setZGyroOffset(settings->offsets[0].zGyroOffset);
+      mpu.setXAccelOffset(settings->offsets[0].xAccelOffset);
+      mpu.setYAccelOffset(settings->offsets[0].yAccelOffset);
+      mpu.setZAccelOffset(settings->offsets[0].zAccelOffset);
+    }
+
+    lights_loop();
+    mpu_loop();
+  }
+  
+  ArduinoOTA.handle();
   dnsServer.processNextRequest();
-  mpu_loop();
 }
