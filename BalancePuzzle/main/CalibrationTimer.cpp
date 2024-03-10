@@ -42,11 +42,12 @@ void CalibrationTimer::calibration_loop() {
     auto yAccelOffset = mpu.getYAccelOffset();
     auto zAccelOffset = mpu.getZAccelOffset();
 
-    settings->saveCalibration(currentTargetNumber, xGyroOffset, yGyroOffset, zGyroOffset, xAccelOffset, yAccelOffset, zAccelOffset);
+    settings->setCalibration(currentTargetNumber, xGyroOffset, yGyroOffset, zGyroOffset, xAccelOffset, yAccelOffset, zAccelOffset);
     
     countdownTimer.Start();
 
     if (++currentTargetNumber >= numberOfTargets) {
+      settings->saveCalibration();
       countdownTimer.Stop();
       putTheDeviceDownTimer.Start();
     }

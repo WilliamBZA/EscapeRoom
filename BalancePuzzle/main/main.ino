@@ -178,7 +178,7 @@ String getSettings() {
   return response;
 }
 
-String valueProcessor(const String& var) {
+String httpTokenReplacer(const String& var) {
   Serial.print("Var: "); Serial.println(var);
 
   if (var == "DEVICE_NAME") {
@@ -193,7 +193,7 @@ String valueProcessor(const String& var) {
 }
 
 void configureUrlRoutes() {
-  server.serveStatic("/", SPIFFS, "").setTemplateProcessor(valueProcessor).setDefaultFile("index.html");
+  server.serveStatic("/", SPIFFS, "").setTemplateProcessor(httpTokenReplacer).setDefaultFile("index.html");
 
   server.on("/api/resetsettings", HTTP_GET, [](AsyncWebServerRequest * request) {
     Serial.print("Resetting settings->.."); Serial.println("");
@@ -203,6 +203,11 @@ void configureUrlRoutes() {
     request->send(200, "text/json", "OK");
     delay(500);
     ESP.restart();
+  });
+
+  server.on("/api/calibrate", HTTP_GET, [](AsyncWebServerRequest * request) {
+      calibrateTargets();
+      request->send(200, "text/json", "OK");
   });
 
   server.on("/api/currentsettings", HTTP_GET, [](AsyncWebServerRequest * request) {
@@ -220,9 +225,6 @@ void configureUrlRoutes() {
 
       delay(500);
       ESP.restart();
-    } else if (request->url() == "calibrate") {
-      calibrateTargets();
-      request->send(200, "text/json", "OK");
     } else {
       request->send(404);
     }
@@ -328,7 +330,9 @@ void setup() {
 
   mpu_setup();
 
-  calibrationTimer.Start();
+  if (!settings->loadCalibration()) {
+    calibrationTimer.Start();
+  }
 
   server.begin();
   Serial.println("Setup complete");
@@ -459,6 +463,7 @@ void calibrateTargets() {
   calibrateMPU();
 
   if (!calibrationTimer.IsRunning()) {
+    mpuCalibrated = false;
     calibrationTimer.Start();
   }
 }
