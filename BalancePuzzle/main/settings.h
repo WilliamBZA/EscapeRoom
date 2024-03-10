@@ -2,7 +2,7 @@
 #define SETTINGS_h
 
 #include <FS.h>
-#include <AsyncJson.h>
+#include <ArduinoJson.h>
 
 #if defined(ESP32)
 #include <SPIFFS.h>
@@ -25,7 +25,9 @@ class Settings {
     void loadDeviceSettings();
     void resetSettings();
 
-    void saveCalibration(int targetNumber, int xGyroOffset, int yGyroOffset, int zGyroOffset, int xAccelOffset, int yAccelOffset, int zAccelOffset);
+    bool loadCalibration();
+    void saveCalibration();
+    void setCalibration(int targetNumber, int xGyroOffset, int yGyroOffset, int zGyroOffset, int xAccelOffset, int yAccelOffset, int zAccelOffset);
 
     String deviceName;
     String ssid;
