@@ -126,6 +126,8 @@ bool Settings::loadCalibration() {
 
     x++;
   }
+
+  numberOfTargets = x;
   
   return true;
 }

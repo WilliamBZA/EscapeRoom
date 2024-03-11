@@ -39,8 +39,6 @@ Settings* settings = new Settings();
 
 bool isConnected = false;
 
-int degree = 0;
-
 MPU6050 mpu;
 
 int outterDegreeOffset = 8; // 3, 10
@@ -65,10 +63,12 @@ int secondRing = 25;
 int innerRing = 18;
 int cross = 6;
 
+int degree = 0;
 int degreesFarFromZero = 45; // the tilt away
 int maxDegreesFromZero = 45;
 int minDegreesFromZero = 0;
 
+int targetNumber = 0;
 CalibrationTimer calibrationTimer(3, mpu, settings, [](int percentageComplete, CRGB colour) {
   auto numberToPutOn = ((100 - percentageComplete) * outerRing / 100);
 
@@ -78,6 +78,8 @@ CalibrationTimer calibrationTimer(3, mpu, settings, [](int percentageComplete, C
 
   FastLED.show();
 });
+
+Timer lockedOnTimer(3000);
 
 bool connectToWifi() {
   WiFi.disconnect();
@@ -490,6 +492,8 @@ void turnAllLightsOff() {
   for (int x = 0; x < LED_COUNT; x++) {
     leds[x] = CRGB::Black;
   }
+
+  FastLED.show();
 }
 
 void lights_loop() {
@@ -558,25 +562,78 @@ void lights_loop() {
 }
 
 void loop() {
+  ArduinoOTA.handle();
+  dnsServer.processNextRequest();
+  
   if (calibrationTimer.IsRunning()) {
     turnAllLightsOff();
     calibrationTimer.calibration_loop();
-  } else {
-    if (!mpuCalibrated) {
-      mpuCalibrated = true;
 
-      mpu.setXGyroOffset(settings->offsets[0].xGyroOffset);
-      mpu.setYGyroOffset(settings->offsets[0].yGyroOffset);
-      mpu.setZGyroOffset(settings->offsets[0].zGyroOffset);
-      mpu.setXAccelOffset(settings->offsets[0].xAccelOffset);
-      mpu.setYAccelOffset(settings->offsets[0].yAccelOffset);
-      mpu.setZAccelOffset(settings->offsets[0].zAccelOffset);
-    }
-
-    lights_loop();
-    mpu_loop();
+    return;
   }
   
-  ArduinoOTA.handle();
-  dnsServer.processNextRequest();
+  if (!mpuCalibrated) {
+    mpuCalibrated = true;
+
+    mpu.setXGyroOffset(settings->offsets[0].xGyroOffset);
+    mpu.setYGyroOffset(settings->offsets[0].yGyroOffset);
+    mpu.setZGyroOffset(settings->offsets[0].zGyroOffset);
+    mpu.setXAccelOffset(settings->offsets[0].xAccelOffset);
+    mpu.setYAccelOffset(settings->offsets[0].yAccelOffset);
+    mpu.setZAccelOffset(settings->offsets[0].zAccelOffset);
+  }
+
+  if (targetNumber >= settings->numberOfTargets) {
+    turnAllLightsOff();
+    return;
+  }
+
+  mpu_loop();
+  lights_loop();
+
+  if (lockedOnTimer.IsRunning()) {
+    if (degreesFarFromZero != 0) {
+      lockedOnTimer.Stop();
+      Serial.println("Target lost");
+
+      return;
+    }
+    
+    if (lockedOnTimer.Check()) {
+      lockedOnTimer.Stop();
+
+      // publish target hit
+      Serial.println("Target hit");
+
+      targetNumber++;
+      if (targetNumber >= settings->numberOfTargets) {
+        // publish all targets hit
+        Serial.println("All targets hit!!!!!!!!!!!!");
+        
+        return;
+      }
+
+      // set calibration to next target
+      mpu.setXGyroOffset(settings->offsets[targetNumber].xGyroOffset);
+      mpu.setYGyroOffset(settings->offsets[targetNumber].yGyroOffset);
+      mpu.setZGyroOffset(settings->offsets[targetNumber].zGyroOffset);
+      mpu.setXAccelOffset(settings->offsets[targetNumber].xAccelOffset);
+      mpu.setYAccelOffset(settings->offsets[targetNumber].yAccelOffset);
+      mpu.setZAccelOffset(settings->offsets[targetNumber].zAccelOffset);
+    } else {
+      // locked on, but not for long enough yet
+      auto percentageComplete = lockedOnTimer.GetCurrentProgress() * 100 / lockedOnTimer.GetTriggerInterval();
+      
+      for (int x = 0; x < outerRing * percentageComplete / 100; x++) {
+        leds[x] = CRGB::White;
+      }
+
+      FastLED.show();
+    }
+  }
+
+  if (!lockedOnTimer.IsRunning() && degreesFarFromZero == 0) {
+    lockedOnTimer.Start();
+    Serial.println("Starting locking on...");
+  }
 }

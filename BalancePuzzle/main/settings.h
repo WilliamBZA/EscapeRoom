@@ -34,6 +34,7 @@ class Settings {
     String wifiPassword;
 
     CalibrationOffsets offsets[3];
+    int numberOfTargets;
 };
 
 #endif
