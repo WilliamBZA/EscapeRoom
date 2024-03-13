@@ -28,7 +28,7 @@ void Settings::loadDeviceSettings() {
   File settingsFile = SPIFFS.open("/settings.json", "r");
   if (!settingsFile) {
     Serial.println("No settings file found");
-    deviceName = "UnknownDevice";
+    deviceName = "BalancePuzzle";
 
     return;
   }

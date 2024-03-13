@@ -19,10 +19,15 @@
 CRGB leds[LED_COUNT];
 
 #if defined(ESP8266)
+// The I2c PINS for ESP8266 are: SDA = IO4, SCL = IO5
+
 #include <ESP8266mDNS.h>
+
 #endif
 
 #if defined(ESP32)
+// The I2c PINS for ESP8266 are: SDA = IO21, SCL = IO22
+
 #include <ESPmDNS.h>
 #endif
 
@@ -120,7 +125,11 @@ void configureCaptivePortal() {
   Serial.println("Starting captive portal");
 
   char portalSSID[23];
+#if defined(ESP32)
+  snprintf(portalSSID, 23, "smartlights-%llX", ESP.getEfuseMac());
+#else if defined(ESP8266)
   snprintf(portalSSID, 23, "smartlights-%X", ESP.getChipId());
+#endif
   Serial.print("SSID will be: "); Serial.println(portalSSID);
   
   WiFi.mode(WIFI_AP);
@@ -309,6 +318,8 @@ String getLocalTime() {
 void setup() {
   Serial.begin(115200);
   while (!Serial) { }
+
+  Serial.println("Starting up...");
 
   FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, LED_COUNT);
   FastLED.setBrightness(10);
