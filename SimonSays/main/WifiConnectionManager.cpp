@@ -21,6 +21,8 @@ bool WifiConnectionManager::connectToWifi() {
   WiFi.disconnect();
   WiFi.mode(WIFI_OFF);
 
+  WiFi.mode(WIFI_AP_STA);
+
   if (settings->ssid != "") {
     Serial.println("Using saved SSID and Password to attempt WiFi Connection.");
     Serial.print("Saved SSID is "); Serial.println(settings->ssid);
