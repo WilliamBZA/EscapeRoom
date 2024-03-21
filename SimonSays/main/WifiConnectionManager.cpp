@@ -1,6 +1,7 @@
 #include <WiFiManager.h>
 #include <DNSServer.h>
 #include <ArduinoOTA.h>
+#include <wifi.h>
 
 #if defined(ESP32)
 #include <ESPmDNS.h>
@@ -44,7 +45,7 @@ bool WifiConnectionManager::connectToWifi() {
       }
     }
 
-    Serial.println("\nConnected to the WiFi network");
+    Serial.print("\nConnected to the WiFi network on channel: "); Serial.println(WiFi.channel());
     Serial.print("Local IP: ");
     Serial.println(WiFi.localIP());
     isConnected = true;

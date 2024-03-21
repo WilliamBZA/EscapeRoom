@@ -29,6 +29,10 @@ void Settings::loadDeviceSettings() {
   if (!settingsFile) {
     Serial.println("No settings file found");
     deviceName = "ButtonPuzzle";
+    ssid = "dropitlikeaSquat";
+    wifiPassword = "DaisyToddAndButt";
+
+    saveCurrentSettings();
 
     return;
   }

@@ -13,6 +13,11 @@ class Swarm {
   public:
     void InitializeEspNow();
     bool BroadcastAvailability();
+#ifdef ESP32
+    bool AddPeer(const uint8_t * mac_addr, uint8_t chan);
+#else
+    bool AddPeer(uint8_t * mac_addr, uint8_t chan);
+#endif
 };
 
 #endif

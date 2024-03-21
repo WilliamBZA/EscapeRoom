@@ -20,11 +20,11 @@ void setup() {
 
   settings->loadDeviceSettings();
 
-  /*if (wifiManager.ConnectToWifi()) {
+  if (wifiManager.ConnectToWifi()) {
     Serial.println("Wifi connected");
   } else {
     Serial.println("Couldn't connect to wifi");
-  }*/
+  }
 
   swarm.InitializeEspNow();
   
@@ -35,12 +35,7 @@ void setup() {
 bool b = false;
 
 void loop() {
-  //wifiManager.wifi_loop();
-  
-  if (!b) {
-    b = true;
-    swarm.BroadcastAvailability();
-  }
+  wifiManager.wifi_loop();
   
   digitalWrite(LED_PIN, digitalRead(BUTTON_PIN));
 
