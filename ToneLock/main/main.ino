@@ -1,8 +1,15 @@
+#include <WiFi.h>
+#include <AsyncMqttClient.h>
 #include <Keypad.h>
 #include "settings.h"
 #include "WifiConnectionManager.h"
 #include "tones.h"
 #include "Timer.h"
+
+extern "C" {
+  #include "freertos/FreeRTOS.h"
+  #include "freertos/timers.h"
+}
 
 #define BUZZER_PIN 18
 #define BUTTON_PIN 13
@@ -28,6 +35,10 @@ int currentPasswordIndex = 0;
 
 char tonePassword[9] = {"55497349"};
 
+TimerHandle_t wifiReconnectTimer;
+TimerHandle_t mqttReconnectTimer;
+AsyncMqttClient mqttClient;
+
 Keypad keypad = Keypad(makeKeymap(keyMap), rowPins, colPins, ROWS, COLS);
 
 int getTone(char key) {
@@ -47,6 +58,96 @@ int getTone(char key) {
   }
 }
 
+void ConnectToMqtt() {
+  Serial.println("Connecting to MQTT...");
+  mqttClient.connect();
+}
+
+void OnMqttConnect(bool sessionPresent) {
+  Serial.println("Connected to MQTT.");
+  Serial.print("Session present: ");
+  Serial.println(sessionPresent);
+  SuscribeMqtt();
+}
+
+void OnMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
+  Serial.println("Disconnected from MQTT.");
+
+  xTimerStart(mqttReconnectTimer, 0);
+}
+
+void OnMqttSubscribe(uint16_t packetId, uint8_t qos) {
+  Serial.println("Subscribe acknowledged.");
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+  Serial.print("  qos: ");
+  Serial.println(qos);
+}
+
+void OnMqttUnsubscribe(uint16_t packetId) {
+  Serial.println("Unsubscribe acknowledged.");
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+}
+
+void OnMqttPublish(uint16_t packetId) {
+  Serial.println("Publish acknowledged.");
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+}
+
+void subscribeTo(char* topic) {
+  uint16_t packetIdSub = mqttClient.subscribe(topic, 1);
+  Serial.print("Subscribing to topic '"); Serial.print(topic); Serial.print("' at QoS 1, packetId: "); Serial.println(packetIdSub);
+}
+
+void SuscribeMqtt() {
+  subscribeTo("escaperoom/puzzles/changedifficulty");
+  subscribeTo("escaperoom/puzzles/startroom");
+}
+
+void PublishMqtt(unsigned long data) {
+  //String payload = String(data);
+  //mqttClient.publish("escaperoom/puzzles/reduced", 1, true, (char*)payload.c_str());
+}
+
+void InitMqtt() {
+  mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(ConnectToMqtt));
+
+  mqttClient.onConnect(OnMqttConnect);
+  mqttClient.onDisconnect(OnMqttDisconnect);
+
+  mqttClient.onSubscribe(OnMqttSubscribe);
+  mqttClient.onUnsubscribe(OnMqttUnsubscribe);
+
+  mqttClient.onMessage(OnMqttReceived);
+  mqttClient.onPublish(OnMqttPublish);
+
+  mqttClient.setServer("192.168.88.114", 1883);
+}
+
+String GetPayloadContent(char* data, size_t len) {
+  String content = "";
+  for(size_t i = 0; i < len; i++) {
+    content.concat(data[i]);
+  }
+  return content;
+}
+
+void OnMqttReceived(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+  Serial.print("Received on ");
+  Serial.print(topic);
+  Serial.print(": ");
+
+  String content = GetPayloadContent(payload, len);
+  Serial.print(content); Serial.println();
+
+  if (topic == "escaperoom/puzzles/changedifficulty") {
+    int difficulty = content.toInt();
+    Serial.print("Changing difficulty to: "); Serial.println(difficulty); 
+  }
+}
+
 void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT);
@@ -63,6 +164,9 @@ void setup() {
   } else {
     Serial.println("Couldn't connect to wifi");
   }
+
+  InitMqtt();
+  ConnectToMqtt();
 }
 
 void wrongPassword() {
