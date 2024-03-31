@@ -29,7 +29,7 @@ char keyMap[ROWS][COLS] = {
 Settings* settings = new Settings();
 WiFiConnectionManager wifiManager(settings);
 Timer resetInputTimer(3000);
-int tonePasswordLength = 8;
+int tonePasswordLength = 4; // difficulty of 50%
 long debounceTimer;
 int currentPasswordIndex = 0;
 
@@ -106,9 +106,9 @@ void SuscribeMqtt() {
   subscribeTo("escaperoom/puzzles/startroom");
 }
 
-void PublishMqtt(unsigned long data) {
-  //String payload = String(data);
-  //mqttClient.publish("escaperoom/puzzles/reduced", 1, true, (char*)payload.c_str());
+void PublishMqtt(char* topic, char* payload) {
+  Serial.print("Publishing to topic '"); Serial.print(topic); Serial.print("' with payload: '"); Serial.print(payload); Serial.println("'");
+  mqttClient.publish(topic, 1, true, payload);
 }
 
 void InitMqtt() {
@@ -134,17 +134,22 @@ String GetPayloadContent(char* data, size_t len) {
   return content;
 }
 
-void OnMqttReceived(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-  Serial.print("Received on ");
-  Serial.print(topic);
-  Serial.print(": ");
+void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+  Serial.print("Publish received on topic: "); Serial.println(cTopic);
 
-  String content = GetPayloadContent(payload, len);
+  String topic = (String)cTopic;
+  topic.trim();
+  
+  String content = ((String)payload).substring(0, len);
   Serial.print(content); Serial.println();
 
   if (topic == "escaperoom/puzzles/changedifficulty") {
     int difficulty = content.toInt();
-    Serial.print("Changing difficulty to: "); Serial.println(difficulty); 
+    tonePasswordLength = 8 * difficulty / 10;
+    tonePasswordLength = max(min(tonePasswordLength, 8), 3);
+    Serial.print("Changing difficulty to: "); Serial.print(difficulty); Serial.print("\t password length now: "); Serial.println(tonePasswordLength);
+  } else {
+    Serial.print("no match");
   }
 }
 
@@ -209,6 +214,7 @@ void loop() {
         currentPasswordIndex = 0;
         
         // Publish Unlocked
+        PublishMqtt("escaperoom/puzzles/tonelock/puzzlesolved", "");
       }
     }
   }

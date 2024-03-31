@@ -15,14 +15,14 @@ public class Program
 
         mqttClient.ApplicationMessageReceivedAsync += e =>
         {
-            Console.WriteLine("Received application message.");
-            Console.WriteLine(System.Text.Encoding.Default.GetString(e.ApplicationMessage.PayloadSegment));
+            Console.WriteLine($"Received application message on topic {e.ApplicationMessage.Topic}:");
+            Console.WriteLine($"\t{Encoding.Default.GetString(e.ApplicationMessage.PayloadSegment)}");
 
             return Task.CompletedTask;
         };
 
         await mqttClient.ConnectAsync(mqttClientOptions, CancellationToken.None);
-        await mqttClient.SubscribeAsync("escaperoom/puzzles/*", MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce, CancellationToken.None);
+        await mqttClient.SubscribeAsync("escaperoom/puzzles/#", MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce, CancellationToken.None);
 
         Console.WriteLine("MQTT client subscribed to topic.");
     }
