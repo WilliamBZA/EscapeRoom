@@ -12,6 +12,8 @@ extern "C" {
 }
 
 #define BUZZER_PIN 18
+#define REDLED_PIN 23
+#define GREENLED_PIN 22
 #define BUTTON_PIN 13
 #define ROWS  4
 #define COLS  3
@@ -32,30 +34,40 @@ Timer resetInputTimer(3000);
 int tonePasswordLength = 4; // difficulty of 50%
 long debounceTimer;
 int currentPasswordIndex = 0;
+int topicCount = 0;
 
-char tonePassword[9] = {"55497349"};
+char tonePassword[9] = {"83464311"};
 
 TimerHandle_t wifiReconnectTimer;
 TimerHandle_t mqttReconnectTimer;
+TimerHandle_t startupTimer;
 AsyncMqttClient mqttClient;
 
 Keypad keypad = Keypad(makeKeymap(keyMap), rowPins, colPins, ROWS, COLS);
 
 int getTone(char key) {
   switch (key) {
-    case '1': return NOTE_C4;
-    case '2': return NOTE_CS4;
-    case '3': return NOTE_D4;
-    case '4': return NOTE_DS4;
-    case '5': return NOTE_E4;
-    case '6': return NOTE_F4;
-    case '7': return NOTE_FS4;
-    case '8': return NOTE_G4;
-    case '9': return NOTE_GS4;
-    case '*': return NOTE_A4;
-    case '0': return NOTE_AS4;
-    case '#': return NOTE_B4;
+    case '1': return NOTE_A4;
+    case '2': return NOTE_AS4;
+    case '3': return NOTE_B4;
+    case '4': return NOTE_C5;
+    case '5': return NOTE_CS5;
+    case '6': return NOTE_D5;
+    case '7': return NOTE_DS4;
+    case '8': return NOTE_E5;
+    case '9': return NOTE_F5;
+    case '0': return NOTE_FS5;
+    case '*': return 0;
+    case '#': return 0;
   }
+}
+
+void clearStartupTimer() {
+  xTimerStop(startupTimer, 0);
+  xTimerDelete(startupTimer, 0);
+  
+  digitalWrite(REDLED_PIN, LOW);
+  digitalWrite(GREENLED_PIN, LOW);
 }
 
 void ConnectToMqtt() {
@@ -67,6 +79,9 @@ void OnMqttConnect(bool sessionPresent) {
   Serial.println("Connected to MQTT.");
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
+
+  clearStartupTimer();
+  
   SuscribeMqtt();
 }
 
@@ -82,6 +97,11 @@ void OnMqttSubscribe(uint16_t packetId, uint8_t qos) {
   Serial.println(packetId);
   Serial.print("  qos: ");
   Serial.println(qos);
+
+  topicCount--;
+  if (topicCount == 0) {
+    clearStartupTimer();
+  }
 }
 
 void OnMqttUnsubscribe(uint16_t packetId) {
@@ -99,9 +119,13 @@ void OnMqttPublish(uint16_t packetId) {
 void subscribeTo(char* topic) {
   uint16_t packetIdSub = mqttClient.subscribe(topic, 1);
   Serial.print("Subscribing to topic '"); Serial.print(topic); Serial.print("' at QoS 1, packetId: "); Serial.println(packetIdSub);
+  topicCount++;
 }
 
 void SuscribeMqtt() {
+  startupTimer = xTimerCreate("startupdiagnostics", 300, pdTRUE, (void*)123, reinterpret_cast<TimerCallbackFunction_t>(diganosticsTimerCallback));
+  xTimerStart(startupTimer, 0);
+  
   subscribeTo("escaperoom/puzzles/changedifficulty");
   subscribeTo("escaperoom/puzzles/startroom");
 }
@@ -111,8 +135,23 @@ void PublishMqtt(char* topic, char* payload) {
   mqttClient.publish(topic, 1, true, payload);
 }
 
+void ReconnectToWifi() {
+  if (wifiManager.ConnectToWifi(WiFiEvent)) {
+    Serial.println("Wifi connected");
+    clearStartupTimer();
+
+    xTimerStop(wifiReconnectTimer, 0); // Stop reconnecting to wifi
+    ConnectToMqtt();
+  } else {
+    Serial.println("Couldn't connect to wifi");
+  }
+}
+
 void InitMqtt() {
-  mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(ConnectToMqtt));
+  startupTimer = xTimerCreate("startupdiagnostics", 100, pdTRUE, (void*)100, reinterpret_cast<TimerCallbackFunction_t>(diganosticsTimerCallback));
+  xTimerStart(startupTimer, 0);
+  
+  wifiReconnectTimer = xTimerCreate("wifiReconnectTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(ConnectToMqtt));
 
   mqttClient.onConnect(OnMqttConnect);
   mqttClient.onDisconnect(OnMqttDisconnect);
@@ -124,14 +163,6 @@ void InitMqtt() {
   mqttClient.onPublish(OnMqttPublish);
 
   mqttClient.setServer("192.168.88.114", 1883);
-}
-
-String GetPayloadContent(char* data, size_t len) {
-  String content = "";
-  for(size_t i = 0; i < len; i++) {
-    content.concat(data[i]);
-  }
-  return content;
 }
 
 void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
@@ -153,9 +184,31 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
   }
 }
 
+void WiFiEvent(WiFiEvent_t event) {
+  Serial.printf("[WiFi-event] event: %d\n", event);
+  switch(event) {
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      Serial.println("WiFi lost connection");
+      xTimerStart(wifiReconnectTimer, 0);
+      break;
+  }
+}
+
+bool isHigh = true;
+void diganosticsTimerCallback(TimerHandle_t timer) {
+  if (pvTimerGetTimerID(timer) == (void*)123) {
+    digitalWrite(REDLED_PIN, isHigh);
+  } else {
+    digitalWrite(GREENLED_PIN, isHigh);
+  }
+  isHigh = !isHigh;
+}
+
 void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);
+  pinMode(REDLED_PIN, OUTPUT);
+  pinMode(GREENLED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLDOWN);
 
   Serial.begin(115200);
   while (!Serial) { }
@@ -164,8 +217,12 @@ void setup() {
 
   settings->loadDeviceSettings();
 
-  if (wifiManager.ConnectToWifi()) {
+  startupTimer = xTimerCreate("startupdiagnostics", 100, pdTRUE, (void*)123, reinterpret_cast<TimerCallbackFunction_t>(diganosticsTimerCallback));
+  xTimerStart(startupTimer, 0);
+
+  if (wifiManager.ConnectToWifi(WiFiEvent)) {
     Serial.println("Wifi connected");
+    clearStartupTimer();
   } else {
     Serial.println("Couldn't connect to wifi");
   }
@@ -177,13 +234,60 @@ void setup() {
 void wrongPassword() {
   tone(BUZZER_PIN, NOTE_A2, 1000);
   debounceTimer += 1000;
+  digitalWrite(REDLED_PIN, HIGH);
 }
 
 void rightPassword() {
-  tone(BUZZER_PIN, NOTE_E6, 1500);
+  tone(BUZZER_PIN, NOTE_C4, 133);
+  tone(BUZZER_PIN, 0, 16);
+  tone(BUZZER_PIN, NOTE_C4, 133);
+  tone(BUZZER_PIN, 0, 16);
+  tone(BUZZER_PIN, NOTE_C4, 133);
+  tone(BUZZER_PIN, 0, 16);
+  tone(BUZZER_PIN, NOTE_C4, 266);
+  tone(BUZZER_PIN, 0, 33);
+  tone(BUZZER_PIN, NOTE_G3, 266);
+  tone(BUZZER_PIN, 0, 50);
+  tone(BUZZER_PIN, NOTE_A3, 266);
+  tone(BUZZER_PIN, 0, 50);
+  tone(BUZZER_PIN, NOTE_C4, 133);
+  tone(BUZZER_PIN, 0, 33);
+  tone(BUZZER_PIN, NOTE_A3, 133);
+  tone(BUZZER_PIN, 0, 33);
+  tone(BUZZER_PIN, NOTE_C4, 266);
+  
   debounceTimer += 1500;
+  digitalWrite(GREENLED_PIN, HIGH);
 }
 
+void playPasswordTone() {
+  tone(BUZZER_PIN, NOTE_E5, 200);
+  tone(BUZZER_PIN, 0, 50);
+
+  tone(BUZZER_PIN, NOTE_B4, 400);
+  tone(BUZZER_PIN, 0, 50);
+
+  tone(BUZZER_PIN, NOTE_C5, 400);
+  tone(BUZZER_PIN, 0, 50);
+
+  tone(BUZZER_PIN, NOTE_D5, 200);
+  tone(BUZZER_PIN, 0, 50);
+
+  tone(BUZZER_PIN, NOTE_C5, 400);
+  tone(BUZZER_PIN, 0, 50);
+
+  tone(BUZZER_PIN, NOTE_B4, 400);
+  tone(BUZZER_PIN, 0, 50);
+
+  tone(BUZZER_PIN, NOTE_A4, 200);
+  tone(BUZZER_PIN, 0, 50);
+
+  tone(BUZZER_PIN, NOTE_A4, 400);
+  tone(BUZZER_PIN, 0, 50);
+  // NOTE_E5, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_C5,8,  NOTE_B4,8,  NOTE_A4, 4,  NOTE_A4,8
+}
+
+long ledsOffTime = -1;
 void loop() {
   wifiManager.wifi_loop();
   if (resetInputTimer.Check()) {
@@ -191,11 +295,14 @@ void loop() {
     
     wrongPassword();
     resetInputTimer.Stop();
+    digitalWrite(REDLED_PIN, LOW);
+    digitalWrite(GREENLED_PIN, LOW);
   }
 
   char key = keypad.getKey();
 
   if (key && debounceTimer <= millis()) {
+    ledsOffTime = millis() + 500;
     Serial.println(key);
 
     debounceTimer = millis() + 500;
@@ -206,12 +313,14 @@ void loop() {
       wrongPassword();
       resetInputTimer.Stop();
     } else {
+      digitalWrite(GREENLED_PIN, HIGH);
       currentPasswordIndex++;
       resetInputTimer.Start();
 
       if (currentPasswordIndex == tonePasswordLength) {
         rightPassword();
         currentPasswordIndex = 0;
+        resetInputTimer.Stop();
         
         // Publish Unlocked
         PublishMqtt("escaperoom/puzzles/tonelock/puzzlesolved", "");
@@ -222,9 +331,11 @@ void loop() {
   if (digitalRead(BUTTON_PIN) && debounceTimer <= millis()) {
     debounceTimer = millis() + (525 * tonePasswordLength);
 
-    for (int x = 0; x < tonePasswordLength; x++) {
-      tone(BUZZER_PIN, getTone(tonePassword[x]), 500);
-      tone(BUZZER_PIN, 0, 25);
-    }
+    playPasswordTone();
+  }
+
+  if (millis() > ledsOffTime) {
+    digitalWrite(REDLED_PIN, LOW);
+    digitalWrite(GREENLED_PIN, LOW);
   }
 }

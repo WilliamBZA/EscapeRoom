@@ -18,11 +18,12 @@ WiFiConnectionManager::WiFiConnectionManager(Settings* settingsInstance) {
   settings = settingsInstance;
 }
 
-bool WiFiConnectionManager::connectToWifi() {
+bool WiFiConnectionManager::connectToWifi(void (*wifiEventCallback)(WiFiEvent_t event)) {
   WiFi.disconnect();
   WiFi.mode(WIFI_OFF);
 
   WiFi.mode(WIFI_AP_STA);
+  WiFi.onEvent(wifiEventCallback);
 
   if (settings->ssid != "") {
     Serial.println("Using saved SSID and Password to attempt WiFi Connection.");
@@ -55,8 +56,8 @@ bool WiFiConnectionManager::connectToWifi() {
   return false;
 }
 
-bool WiFiConnectionManager::ConnectToWifi() {
-  if (connectToWifi()) {
+bool WiFiConnectionManager::ConnectToWifi(void (*wifiEventCallback)(WiFiEvent_t event)) {
+  if (connectToWifi(wifiEventCallback)) {
     String dnsName = settings->deviceName;
     dnsName.replace(" ", "");
     if (!MDNS.begin(dnsName)) {
