@@ -8,7 +8,7 @@ class WiFiConnectionManager {
   public:
     WiFiConnectionManager(Settings* settings);
     
-    bool ConnectToWifi();
+    bool ConnectToWifi(void (*eventCallback)(WiFiEvent_t event));
     bool isConnected;
 
     void wifi_loop();
@@ -17,7 +17,7 @@ class WiFiConnectionManager {
     DNSServer dnsServer;
 
   protected:
-    bool connectToWifi();
+    bool connectToWifi(void (*eventCallback)(WiFiEvent_t event));
     void configureCaptivePortal();
     void configure_OTA();
 };
