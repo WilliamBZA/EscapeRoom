@@ -45,8 +45,8 @@ public class Program
 
             while (true)
             {
-                var input = Console.ReadLine().ToLowerInvariant();
-                switch (input)
+                var input = Console.ReadLine();
+                switch (input?.ToLowerInvariant())
                 {
                     case "":
                         return;

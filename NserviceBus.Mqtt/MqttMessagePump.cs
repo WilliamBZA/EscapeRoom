@@ -1,36 +1,29 @@
 ﻿using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Server;
+using NServiceBus.Extensibility;
 using NServiceBus.Transport;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace NserviceBus.Mqtt
 {
-    class MqttMessagePump : IMessageReceiver, IDisposable
+    class MqttMessagePump(string id, string receiveAddress, ISubscriptionManager? subscriptionManager, string server, int port) : IMessageReceiver, IDisposable
     {
-        public MqttMessagePump(string id, string receiveAddress, ISubscriptionManager subscriptionManager, string server, int port)
-        {
-            Id = id;
-            ReceiveAddress = receiveAddress;
-            Subscriptions = subscriptionManager;
-            Server = server;
-            Port = port;
-        }
+        public string Server { get; } = server;
 
-        public string Server { get; }
+        public int Port { get; } = port;
 
-        public int Port { get; }
+        public ISubscriptionManager? Subscriptions { get; } = subscriptionManager;
 
-        public ISubscriptionManager Subscriptions { get; }
+        public string Id { get; } = id;
 
-        public string Id { get; }
-
-        public string ReceiveAddress { get; }
+        public string ReceiveAddress { get; } = receiveAddress;
 
         public Task ChangeConcurrency(PushRuntimeSettings limitations, CancellationToken cancellationToken = default)
         {
@@ -65,10 +58,11 @@ namespace NserviceBus.Mqtt
 
             client.ApplicationMessageReceivedAsync += e =>
             {
-                Console.WriteLine($"Received application message on topic '{e.ApplicationMessage.Topic}':");
-                Console.WriteLine($"\t'{Encoding.Default.GetString(e.ApplicationMessage.PayloadSegment)}'");
-
-                e.
+                var message = UnwrapMessage(e.ApplicationMessage.PayloadSegment, new ContextBag());
+                if (onMessage != null)
+                {
+                    onMessage(message);
+                }
 
                 return Task.CompletedTask;
             };
@@ -77,6 +71,19 @@ namespace NserviceBus.Mqtt
             await client.SubscribeAsync(ReceiveAddress, MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce, CancellationToken.None);
 
             // Todo: subscribe to other that the endpoint is subscribed to
+        }
+
+        private MessageContext UnwrapMessage(ArraySegment<byte> payload, ContextBag contextBag)
+        {
+            var wrappedMessage = JsonSerializer.Deserialize<MessageWrapper>(payload);
+            if (wrappedMessage == null)
+            {
+                throw new ArgumentException("Unable to deserialize the payload");
+            }
+
+            wrappedMessage.Id = wrappedMessage.Headers[NServiceBus.Headers.MessageId];
+
+            return new MessageContext(wrappedMessage.Id, wrappedMessage.Headers, Encoding.Default.GetBytes(wrappedMessage.Body), new TransportTransaction(), ReceiveAddress, contextBag);
         }
 
         public Task StopReceive(CancellationToken cancellationToken = default)
@@ -120,12 +127,12 @@ namespace NserviceBus.Mqtt
             }
         }
 
-        OnMessage onMessage;
-        OnError onError;
-        CancellationTokenSource messagePumpCancellationTokenSource;
-        CancellationTokenSource messageProcessingCancellationTokenSource;
+        OnMessage? onMessage;
+        OnError? onError;
+        CancellationTokenSource? messagePumpCancellationTokenSource;
+        CancellationTokenSource? messageProcessingCancellationTokenSource;
 
-        IMqttClient client;
+        IMqttClient? client;
 
         bool disposed = false;
     }

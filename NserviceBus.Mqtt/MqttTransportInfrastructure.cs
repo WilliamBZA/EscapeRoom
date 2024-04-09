@@ -41,7 +41,7 @@ namespace NserviceBus.Mqtt
             var errorQueueAddress = receiveSettings.ErrorQueue;
             var queueAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
 
-            ISubscriptionManager subscriptionManager = null;
+            ISubscriptionManager? subscriptionManager = null;
             if (receiveSettings.UsePublishSubscribe)
             {
                 subscriptionManager = new MqttSubscriptionManager();
