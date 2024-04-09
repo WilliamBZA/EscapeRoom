@@ -40,6 +40,7 @@ public class Program
             Console.WriteLine("\tPress H to increase difficulty");
             Console.WriteLine("\tPress E to decrease difficulty");
             Console.WriteLine("\tPress R to restart");
+            Console.WriteLine("\tPress U to unlock the easy mag box");
             Console.WriteLine("\tPress ENTER to exit");
 
             while (true)
@@ -82,6 +83,16 @@ public class Program
 
                         await mqttClient.PublishAsync(restartMessage);
                         Console.WriteLine("Restarted room");
+                        break;
+
+                    case "u":
+                        var unlockMessage = new MqttApplicationMessageBuilder()
+                        .WithTopic("escaperoom/puzzles/easymagunlock/unlock")
+                        .WithPayload("")
+                        .Build();
+
+                        await mqttClient.PublishAsync(unlockMessage);
+                        Console.WriteLine("Unlocked easy mag box");
                         break;
                 }
             }

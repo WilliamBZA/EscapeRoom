@@ -1,9 +1,7 @@
 #include <WiFi.h>
 #include <AsyncMqttClient.h>
-#include <Keypad.h>
 #include "settings.h"
 #include "WifiConnectionManager.h"
-#include "tones.h"
 #include "Timer.h"
 
 extern "C" {
@@ -11,63 +9,24 @@ extern "C" {
   #include "freertos/timers.h"
 }
 
-#define BUZZER_PIN 18
+#define MAG_PIN 22
 #define REDLED_PIN 23
-#define GREENLED_PIN 22
-#define BUTTON_PIN 13
-#define ROWS  4
-#define COLS  3
-
-uint8_t rowPins[ROWS] = {12, 14, 27, 26};
-uint8_t colPins[COLS] = {25, 33, 32};
-
-char keyMap[ROWS][COLS] = {
-  {'1','2','3'},
-  {'4','5','6'},
-  {'7','8','9'},
-  {'*','0','#'}
-};
 
 Settings* settings = new Settings();
 WiFiConnectionManager wifiManager(settings);
-Timer resetInputTimer(3000);
-int tonePasswordLength = 5;
-long debounceTimer;
-int currentPasswordIndex = 0;
+Timer relockMaglockTimer(3000);
 int topicCount = 0;
-
-char tonePassword[9] = {"83464311"};
 
 TimerHandle_t wifiReconnectTimer;
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t startupTimer;
 AsyncMqttClient mqttClient;
 
-Keypad keypad = Keypad(makeKeymap(keyMap), rowPins, colPins, ROWS, COLS);
-
-int getTone(char key) {
-  switch (key) {
-    case '1': return NOTE_A4;
-    case '2': return NOTE_AS4;
-    case '3': return NOTE_B4;
-    case '4': return NOTE_C5;
-    case '5': return NOTE_CS5;
-    case '6': return NOTE_D5;
-    case '7': return NOTE_DS4;
-    case '8': return NOTE_E5;
-    case '9': return NOTE_F5;
-    case '0': return NOTE_FS5;
-    case '*': return 0;
-    case '#': return 0;
-  }
-}
-
 void clearStartupTimer() {
   xTimerStop(startupTimer, 0);
   xTimerDelete(startupTimer, 0);
   
   digitalWrite(REDLED_PIN, LOW);
-  digitalWrite(GREENLED_PIN, LOW);
 }
 
 void ConnectToMqtt() {
@@ -116,7 +75,7 @@ void OnMqttPublish(uint16_t packetId) {
   Serial.println(packetId);
 }
 
-void subscribeTo(char* topic) {
+void subscribeTo(const char* topic) {
   uint16_t packetIdSub = mqttClient.subscribe(topic, 1);
   Serial.print("Subscribing to topic '"); Serial.print(topic); Serial.print("' at QoS 1, packetId: "); Serial.println(packetIdSub);
   topicCount++;
@@ -125,9 +84,9 @@ void subscribeTo(char* topic) {
 void SuscribeMqtt() {
   startupTimer = xTimerCreate("startupdiagnostics", 300, pdTRUE, (void*)123, reinterpret_cast<TimerCallbackFunction_t>(diganosticsTimerCallback));
   xTimerStart(startupTimer, 0);
-  
-  subscribeTo("escaperoom/puzzles/changedifficulty");
-  subscribeTo("escaperoom/puzzles/startroom");
+
+  String topic = "escaperoom/puzzles/" + settings->deviceName + "/unlock";
+  subscribeTo(topic.c_str());
 }
 
 void PublishMqtt(char* topic, char* payload) {
@@ -165,36 +124,17 @@ void InitMqtt() {
   mqttClient.setServer("192.168.88.114", 1883);
 }
 
-int getPasswordLengthFromDifficulty(int difficulty) {
-  switch (difficulty) {
-    case 10: return 8;
-    case 9: return 7;
-    case 8: return 6;
-    case 7: return 6;
-    case 6: return 5;
-    case 5: return 4;
-  }
-
-  return 3;
-}
-
 void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-  Serial.print("Publish received on topic: "); Serial.println(cTopic);
-
   String topic = (String)cTopic;
   topic.trim();
+
+  Serial.print("Publish received on topic: "); Serial.println(topic);
   
   String content = ((String)payload).substring(0, len);
   Serial.print(content); Serial.println();
 
-  if (topic == "escaperoom/puzzles/changedifficulty") {
-    int difficulty = content.toInt();
-    tonePasswordLength = getPasswordLengthFromDifficulty(difficulty);
-    tonePasswordLength = max(min(tonePasswordLength, 8), 3);
-    Serial.print("Changing difficulty to: "); Serial.print(difficulty); Serial.print("\t password length now: "); Serial.println(tonePasswordLength);
-  } else {
-    Serial.print("no match");
-  }
+  digitalWrite(MAG_PIN, LOW);
+  relockMaglockTimer.Start();
 }
 
 void WiFiEvent(WiFiEvent_t event) {
@@ -209,19 +149,16 @@ void WiFiEvent(WiFiEvent_t event) {
 
 bool isHigh = true;
 void diganosticsTimerCallback(TimerHandle_t timer) {
-  if (pvTimerGetTimerID(timer) == (void*)123) {
-    digitalWrite(REDLED_PIN, isHigh);
-  } else {
-    digitalWrite(GREENLED_PIN, isHigh);
-  }
+  digitalWrite(REDLED_PIN, isHigh);
+
   isHigh = !isHigh;
 }
 
 void setup() {
-  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(MAG_PIN, OUTPUT);
   pinMode(REDLED_PIN, OUTPUT);
-  pinMode(GREENLED_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT_PULLDOWN);
+
+  digitalWrite(MAG_PIN, HIGH);
 
   Serial.begin(115200);
   while (!Serial) { }
@@ -244,111 +181,16 @@ void setup() {
   ConnectToMqtt();
 }
 
-void wrongPassword() {
-  tone(BUZZER_PIN, NOTE_A2, 200);
-  debounceTimer += 500;
-  digitalWrite(REDLED_PIN, HIGH);
-}
-
-void rightPassword() {
-  tone(BUZZER_PIN, NOTE_C4, 133);
-  tone(BUZZER_PIN, 0, 16);
-  tone(BUZZER_PIN, NOTE_C4, 133);
-  tone(BUZZER_PIN, 0, 16);
-  tone(BUZZER_PIN, NOTE_C4, 133);
-  tone(BUZZER_PIN, 0, 16);
-  tone(BUZZER_PIN, NOTE_C4, 266);
-  tone(BUZZER_PIN, 0, 33);
-  tone(BUZZER_PIN, NOTE_G3, 266);
-  tone(BUZZER_PIN, 0, 50);
-  tone(BUZZER_PIN, NOTE_A3, 266);
-  tone(BUZZER_PIN, 0, 50);
-  tone(BUZZER_PIN, NOTE_C4, 133);
-  tone(BUZZER_PIN, 0, 33);
-  tone(BUZZER_PIN, NOTE_A3, 133);
-  tone(BUZZER_PIN, 0, 33);
-  tone(BUZZER_PIN, NOTE_C4, 266);
-  
-  debounceTimer += 1500;
-  digitalWrite(GREENLED_PIN, HIGH);
-}
-
-void playPasswordTone() {
-  tone(BUZZER_PIN, NOTE_E5, 200);
-  tone(BUZZER_PIN, 0, 50);
-
-  tone(BUZZER_PIN, NOTE_B4, 400);
-  tone(BUZZER_PIN, 0, 50);
-
-  tone(BUZZER_PIN, NOTE_C5, 400);
-  tone(BUZZER_PIN, 0, 50);
-
-  tone(BUZZER_PIN, NOTE_D5, 200);
-  tone(BUZZER_PIN, 0, 50);
-
-  tone(BUZZER_PIN, NOTE_C5, 400);
-  tone(BUZZER_PIN, 0, 50);
-
-  tone(BUZZER_PIN, NOTE_B4, 400);
-  tone(BUZZER_PIN, 0, 50);
-
-  tone(BUZZER_PIN, NOTE_A4, 200);
-  tone(BUZZER_PIN, 0, 50);
-
-  tone(BUZZER_PIN, NOTE_A4, 400);
-  tone(BUZZER_PIN, 0, 50);
-  // NOTE_E5, 4,  NOTE_B4,8,  NOTE_C5,8,  NOTE_D5,4,  NOTE_C5,8,  NOTE_B4,8,  NOTE_A4, 4,  NOTE_A4,8
-}
-
 long ledsOffTime = -1;
 void loop() {
   wifiManager.wifi_loop();
-  if (resetInputTimer.Check()) {
-    currentPasswordIndex = 0;
-    
-    wrongPassword();
-    resetInputTimer.Stop();
-    digitalWrite(REDLED_PIN, LOW);
-    digitalWrite(GREENLED_PIN, LOW);
-  }
 
-  char key = keypad.getKey();
-
-  if (key && debounceTimer <= millis()) {
-    ledsOffTime = millis() + 500;
-    Serial.println(key);
-
-    debounceTimer = millis() + 500;
-    tone(BUZZER_PIN, getTone(key), 500);
-
-    if (key != tonePassword[currentPasswordIndex]) {
-      currentPasswordIndex = 0;
-      wrongPassword();
-      resetInputTimer.Stop();
-    } else {
-      digitalWrite(GREENLED_PIN, HIGH);
-      currentPasswordIndex++;
-      resetInputTimer.Start();
-
-      if (currentPasswordIndex == tonePasswordLength) {
-        rightPassword();
-        currentPasswordIndex = 0;
-        resetInputTimer.Stop();
-        
-        // Publish Unlocked
-        PublishMqtt("escaperoom/puzzles/tonelock/puzzlesolved", "");
-      }
-    }
-  }
-
-  if (digitalRead(BUTTON_PIN) && debounceTimer <= millis()) {
-    debounceTimer = millis() + (525 * tonePasswordLength);
-
-    playPasswordTone();
+  if (relockMaglockTimer.Check()) {
+    relockMaglockTimer.Stop();
+    digitalWrite(MAG_PIN, HIGH);
   }
 
   if (millis() > ledsOffTime) {
     digitalWrite(REDLED_PIN, LOW);
-    digitalWrite(GREENLED_PIN, LOW);
   }
 }
