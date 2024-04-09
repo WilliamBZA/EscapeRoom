@@ -5,6 +5,10 @@ VisualStudioVersion = 17.9.34622.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MqttHelper", "MqttHelper.csproj", "{4E5765DF-A2B4-44BF-9C37-8CE6D859C185}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EscapeRoomManager", "..\EscapeRoomManager\EscapeRoomManager.csproj", "{D585BDF1-A7E7-48AE-A248-0B015FA06168}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NserviceBus.Mqtt", "..\NserviceBus.Mqtt\NserviceBus.Mqtt.csproj", "{766A19CF-ED79-445D-842C-22DD2D2721FC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{4E5765DF-A2B4-44BF-9C37-8CE6D859C185}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4E5765DF-A2B4-44BF-9C37-8CE6D859C185}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4E5765DF-A2B4-44BF-9C37-8CE6D859C185}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D585BDF1-A7E7-48AE-A248-0B015FA06168}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D585BDF1-A7E7-48AE-A248-0B015FA06168}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D585BDF1-A7E7-48AE-A248-0B015FA06168}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D585BDF1-A7E7-48AE-A248-0B015FA06168}.Release|Any CPU.Build.0 = Release|Any CPU
+		{766A19CF-ED79-445D-842C-22DD2D2721FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{766A19CF-ED79-445D-842C-22DD2D2721FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{766A19CF-ED79-445D-842C-22DD2D2721FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{766A19CF-ED79-445D-842C-22DD2D2721FC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
