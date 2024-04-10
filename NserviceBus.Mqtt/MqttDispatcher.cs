@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using MQTTnet.Server;
 using System.Text.Json;
+using MQTTnet.Protocol;
 
 namespace NserviceBus.Mqtt
 {
@@ -35,7 +36,6 @@ namespace NserviceBus.Mqtt
 
         private IEnumerable<UnicastTransportOperation?> ConvertToUnicastMessage(MulticastTransportOperation message)
         {
-
             yield return null;
         }
 
@@ -43,14 +43,15 @@ namespace NserviceBus.Mqtt
         {
             var wrapper = new MessageWrapper { Body = message.Message.Body.ToArray(), Headers = message.Message.Headers, Id = message.Message.MessageId };
 
-            var outgointMessage = new MqttApplicationMessageBuilder()
+            var outgoingMessage = new MqttApplicationMessageBuilder()
                         .WithTopic(message.Destination)
+                        .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                         .WithPayload(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(wrapper)))
             .Build();
 
             if (MqttMessagePump.client != null)
             {
-                await MqttMessagePump.client.PublishAsync(outgointMessage, cancellationToken);
+                await MqttMessagePump.client.PublishAsync(outgoingMessage, cancellationToken);
             }
         }
 
