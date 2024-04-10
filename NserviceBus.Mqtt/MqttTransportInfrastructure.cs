@@ -47,14 +47,13 @@ namespace NserviceBus.Mqtt
                 subscriptionManager = new MqttSubscriptionManager();
             }
 
-            var pump = new MqttMessagePump(receiveSettings.Id, queueAddress, subscriptionManager, Server, Port);
+            var pump = new MqttMessagePump(receiveSettings.Id, queueAddress, subscriptionManager, Server, Port, settings.CriticalErrorAction);
             return pump;
         }
 
         public void ConfigureSendInfrastructure()
         {
             Dispatcher = new MqttDispatcher(Server, Port);
-            
         }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
