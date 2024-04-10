@@ -8,7 +8,7 @@ namespace EscapeRoomManager
         static async Task Main(string[] args)
         {
             var endpointConfiguration = new EndpointConfiguration("EscapeRoomHelper");
-            endpointConfiguration.UseTransport(new MqttTransport("broker"));
+            endpointConfiguration.UseTransport(new MqttTransport("localhost"));
 
             endpointConfiguration.SendFailedMessagesTo("error");
             endpointConfiguration.EnableInstallers();

@@ -54,7 +54,7 @@ namespace NserviceBus.Mqtt
             var clientOptions = new MqttClientOptionsBuilder()
                 .WithTcpServer(Server, Port)
                 .WithCleanStart(false)
-            .Build();
+                .Build();
 
             client.ApplicationMessageReceivedAsync += e =>
             {
@@ -81,9 +81,9 @@ namespace NserviceBus.Mqtt
                 throw new ArgumentException("Unable to deserialize the payload");
             }
 
-            wrappedMessage.Id = wrappedMessage.Headers[NServiceBus.Headers.MessageId];
+            wrappedMessage.Id = wrappedMessage.Headers.ContainsKey(NServiceBus.Headers.MessageId) ? wrappedMessage.Headers[NServiceBus.Headers.MessageId] : Guid.Empty.ToString();
 
-            return new MessageContext(wrappedMessage.Id, wrappedMessage.Headers, Encoding.Default.GetBytes(wrappedMessage.Body), new TransportTransaction(), ReceiveAddress, contextBag);
+            return new MessageContext(wrappedMessage.Id, wrappedMessage.Headers, wrappedMessage.Body, new TransportTransaction(), ReceiveAddress, contextBag);
         }
 
         public Task StopReceive(CancellationToken cancellationToken = default)

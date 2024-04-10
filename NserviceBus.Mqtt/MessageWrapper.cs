@@ -10,6 +10,6 @@ namespace NserviceBus.Mqtt
     {
         public string? Id { get; set; }
         public required Dictionary<string, string> Headers { get; set; }
-        public required string Body { get; set; }
+        public required byte[] Body { get; set; }
     }
 }
