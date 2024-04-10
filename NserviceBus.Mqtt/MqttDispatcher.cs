@@ -17,28 +17,8 @@ namespace NserviceBus.Mqtt
 
         public int Port { get; } = port;
 
-        public async Task ConnectToBroker()
-        {
-            var mqttFactory = new MqttFactory();
-            client = mqttFactory.CreateMqttClient();
-
-            var clientOptions = new MqttClientOptionsBuilder()
-                .WithTcpServer(Server, Port)
-                .WithCleanStart(false)
-                .Build();
-
-            connected = true;
-
-            await client.ConnectAsync(clientOptions);
-        }
-
         public async Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, CancellationToken cancellationToken = default)
         {
-            if (!connected)
-            {
-                await ConnectToBroker();
-            }
-
             foreach (var msg in outgoingMessages.UnicastTransportOperations)
             {
                 await PublishMessage(msg, cancellationToken);
@@ -68,13 +48,13 @@ namespace NserviceBus.Mqtt
                         .WithPayload(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(wrapper)))
             .Build();
 
-            if (client != null)
+            if (MqttMessagePump.client != null)
             {
-                await client.PublishAsync(outgointMessage, cancellationToken);
+                await MqttMessagePump.client.PublishAsync(outgointMessage, cancellationToken);
             }
         }
 
-        IMqttClient? client;
+        IMqttClient? cliednt;
         bool connected = false;
     }
 }

@@ -1,19 +1,22 @@
 ﻿using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Server;
+using NServiceBus;
 using NServiceBus.Extensibility;
+using NServiceBus.Logging;
 using NServiceBus.Transport;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace NserviceBus.Mqtt
 {
-    class MqttMessagePump(string id, string receiveAddress, ISubscriptionManager? subscriptionManager, string server, int port) : IMessageReceiver, IDisposable
+    public class MqttMessagePump(string id, string receiveAddress, ISubscriptionManager? subscriptionManager, string server, int port) : IMessageReceiver, IDisposable
     {
         public string Server { get; } = server;
 
@@ -56,15 +59,40 @@ namespace NserviceBus.Mqtt
                 .WithCleanStart(false)
                 .Build();
 
-            client.ApplicationMessageReceivedAsync += e =>
+            client.ApplicationMessageReceivedAsync += async e =>
             {
-                var message = UnwrapMessage(e.ApplicationMessage.PayloadSegment, new ContextBag());
+                var context = new ContextBag();
+
+                var message = UnwrapMessage(e.ApplicationMessage.PayloadSegment, context);
                 if (onMessage != null)
                 {
-                    onMessage(message);
-                }
+                    try
+                    {
+                        await onMessage(message);
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException || (messagePumpCancellationTokenSource != null && messagePumpCancellationTokenSource.IsCancellationRequested)))
+                    {
+                        Logger.Error("Message processing failed.", ex);
+                        var errorContext = new ErrorContext(ex, message.Headers, message.NativeMessageId, message.Body, message.TransportTransaction, 1, ReceiveAddress, context);
 
-                return Task.CompletedTask;
+                        try
+                        {
+                            var result = await onError(errorContext, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
+
+                            if (result == ErrorHandleResult.RetryRequired)
+                            {
+                                e.ProcessingFailed = true;
+                                return;
+                            }
+                        }
+                        catch (Exception onErrorEx)
+                        {
+                            e.ProcessingFailed = true;
+
+                            return;
+                        }
+                    }
+                }
             };
 
             await client.ConnectAsync(clientOptions, CancellationToken.None);
@@ -132,8 +160,9 @@ namespace NserviceBus.Mqtt
         CancellationTokenSource? messagePumpCancellationTokenSource;
         CancellationTokenSource? messageProcessingCancellationTokenSource;
 
-        IMqttClient? client;
+        public static IMqttClient? client;
 
         bool disposed = false;
+        static readonly ILog Logger = LogManager.GetLogger(typeof(MqttMessagePump));
     }
 }
