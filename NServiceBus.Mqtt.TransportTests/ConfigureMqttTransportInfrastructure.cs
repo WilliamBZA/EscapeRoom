@@ -1,6 +1,6 @@
 ﻿using NserviceBus.Mqtt;
 using NServiceBus.Logging;
-using NServiceBus.Mqtt.Tests;
+using NServiceBus.Mqtt.TransportTests;
 using NServiceBus.Transport;
 using NServiceBus.TransportTests;
 using System;

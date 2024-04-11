@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.Mqtt.Tests
+﻿namespace NServiceBus.Mqtt.TransportTests
 {
     using System;
     using Logging;
