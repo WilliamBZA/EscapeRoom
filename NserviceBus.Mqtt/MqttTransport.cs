@@ -12,6 +12,7 @@ namespace NserviceBus.Mqtt
         {
             Server = server;
             Port = port;
+            subscriptions = new List<string>();
         }
 
         public string Server { get; }
@@ -24,7 +25,7 @@ namespace NserviceBus.Mqtt
         {
             var infrastructure = new MqttTransportInfrastructure(hostSettings, this, receivers, Server, Port);
 
-            infrastructure.ConfigureReceiveInfrastructure();
+            infrastructure.ConfigureReceiveInfrastructure(subscriptions);
             infrastructure.ConfigureSendInfrastructure();
 
             return Task.FromResult<TransportInfrastructure>(infrastructure);
@@ -33,7 +34,14 @@ namespace NserviceBus.Mqtt
         [Obsolete]
         public override string ToTransportAddress(QueueAddress address)
         {
-            throw new NotImplementedException();
+            return address.BaseAddress;
         }
+
+        public void SubscribeTo(string topic)
+        {
+            subscriptions.Add(topic);
+        }
+
+        List<string> subscriptions;
     }
 }

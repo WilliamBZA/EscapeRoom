@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace EscapeRoomManager
 {
-    public class EscapeRoomSaga : Saga<RoomProgress>, IAmStartedByMessages<RunStarted>, IHandleMessages<ToneLockSolved>
+    public class EscapeRoomSaga : Saga<EscapeRoomRun>, IAmStartedByMessages<RunStarted>, IAmStartedByMessages<ToneLockSolved>
     {
         public async Task Handle(ToneLockSolved message, IMessageHandlerContext context)
         {
@@ -34,7 +34,7 @@ namespace EscapeRoomManager
             return Task.CompletedTask;
         }
 
-        protected override void ConfigureHowToFindSaga(SagaPropertyMapper<RoomProgress> mapper)
+        protected override void ConfigureHowToFindSaga(SagaPropertyMapper<EscapeRoomRun> mapper)
         {
             mapper.MapSaga(saga => saga.RunId)
                 .ToMessage<RunStarted>(tone => tone.RunId)

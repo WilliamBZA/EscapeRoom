@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-public class RunStarted
+public class ToneLockSolved
 {
-    public required string RunId { get; set; }
+    public string RunId { get; set; }
 }

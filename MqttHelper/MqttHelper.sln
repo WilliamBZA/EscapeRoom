@@ -9,7 +9,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EscapeRoomManager", "..\Esc
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NserviceBus.Mqtt", "..\NserviceBus.Mqtt\NserviceBus.Mqtt.csproj", "{766A19CF-ED79-445D-842C-22DD2D2721FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NServiceBus.Mqtt.TransportTests", "..\NServiceBus.Mqtt.TransportTests\NServiceBus.Mqtt.TransportTests.csproj", "{A08DCC75-EEAD-435F-B421-EC0DD49E78A1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NServiceBus.Mqtt.TransportTests", "..\NServiceBus.Mqtt.TransportTests\NServiceBus.Mqtt.TransportTests.csproj", "{A08DCC75-EEAD-435F-B421-EC0DD49E78A1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EscapeRoomBridge", "..\EscapeRoomBridge\EscapeRoomBridge.csproj", "{FD14D140-8EDD-4A1B-8393-30B64DB803CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EscapeRoomIoTRunner", "..\EscapeRoomRunner\EscapeRoomIoTRunner.csproj", "{0463CAC0-B948-4A60-8EF7-252E5E5B0561}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Messages", "..\Messages\Messages.csproj", "{5B595946-9825-4867-82B7-FDD7E649B191}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +39,18 @@ Global
 		{A08DCC75-EEAD-435F-B421-EC0DD49E78A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A08DCC75-EEAD-435F-B421-EC0DD49E78A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A08DCC75-EEAD-435F-B421-EC0DD49E78A1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD14D140-8EDD-4A1B-8393-30B64DB803CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD14D140-8EDD-4A1B-8393-30B64DB803CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD14D140-8EDD-4A1B-8393-30B64DB803CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD14D140-8EDD-4A1B-8393-30B64DB803CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0463CAC0-B948-4A60-8EF7-252E5E5B0561}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0463CAC0-B948-4A60-8EF7-252E5E5B0561}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0463CAC0-B948-4A60-8EF7-252E5E5B0561}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0463CAC0-B948-4A60-8EF7-252E5E5B0561}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B595946-9825-4867-82B7-FDD7E649B191}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B595946-9825-4867-82B7-FDD7E649B191}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B595946-9825-4867-82B7-FDD7E649B191}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B595946-9825-4867-82B7-FDD7E649B191}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -24,30 +24,24 @@ namespace NserviceBus.Mqtt
 
         public int Port { get; }
 
-        public void ConfigureReceiveInfrastructure()
+        public void ConfigureReceiveInfrastructure(List<string> subscribers)
         {
             var receivers = new Dictionary<string, IMessageReceiver>();
 
             foreach (var receiverSetting in receiverSettings)
             {
-                receivers.Add(receiverSetting.Id, CreateReceiver(receiverSetting));
+                receivers.Add(receiverSetting.Id, CreateReceiver(receiverSetting, subscribers));
             }
 
             Receivers = receivers;
         }
 
-        public IMessageReceiver CreateReceiver(ReceiveSettings receiveSettings)
+        public IMessageReceiver CreateReceiver(ReceiveSettings receiveSettings, List<string> subscribers)
         {
             var errorQueueAddress = receiveSettings.ErrorQueue;
             var queueAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
 
-            ISubscriptionManager? subscriptionManager = null;
-            if (receiveSettings.UsePublishSubscribe)
-            {
-                subscriptionManager = new MqttSubscriptionManager();
-            }
-
-            var pump = new MqttMessagePump(receiveSettings.Id, queueAddress, subscriptionManager, Server, Port, settings.CriticalErrorAction);
+            var pump = new MqttMessagePump(receiveSettings.Id, queueAddress, subscribers, Server, Port, settings.CriticalErrorAction);
             return pump;
         }
 
