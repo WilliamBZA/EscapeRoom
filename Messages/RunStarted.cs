@@ -4,7 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-public class ToneLockSolved
+public class RunStarted
 {
     public required string RunId { get; set; }
+    public required string TeamName { get; set; }
 }

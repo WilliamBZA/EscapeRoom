@@ -1,5 +1,4 @@
-﻿using NserviceBus.Mqtt;
-using NServiceBus;
+﻿using NServiceBus;
 
 namespace EscapeRoomManager
 {
@@ -7,22 +6,25 @@ namespace EscapeRoomManager
     {
         static async Task Main(string[] args)
         {
-            var endpointConfiguration = new EndpointConfiguration("EscapeRoomHelper");
-            endpointConfiguration.UseTransport(new MqttTransport("localhost"));
+            var endpointConfiguration = new EndpointConfiguration("EscapeRoomManager");
+            endpointConfiguration.UseTransport(new RabbitMQTransport(RoutingTopology.Conventional(QueueType.Quorum), "host=localhost"));
 
             endpointConfiguration.SendFailedMessagesTo("error");
             endpointConfiguration.EnableInstallers();
             endpointConfiguration.UsePersistence<LearningPersistence>();
             endpointConfiguration.UseSerialization<SystemJsonSerializer>();
-            endpointConfiguration.Recoverability().Delayed(d => d.NumberOfRetries(0));
-            endpointConfiguration.Recoverability().Immediate(d => d.NumberOfRetries(3));
 
             var endpointInstance = await Endpoint.Start(endpointConfiguration);
 
-            await endpointInstance.SendLocal(new RunStarted { RunId = "123" });
 
             Console.WriteLine("Press any key to exit");
             Console.ReadKey();
+
+            await endpointInstance.SendLocal(new RunStarted { RunId = "123", TeamName = "Testing" });
+
+            Console.WriteLine("Press any key to exit");
+            Console.ReadKey();
+
             await endpointInstance.Stop();
         }
     }

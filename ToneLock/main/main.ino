@@ -5,6 +5,7 @@
 #include "WifiConnectionManager.h"
 #include "tones.h"
 #include "Timer.h"
+#include "UUID.h"
 
 extern "C" {
   #include "freertos/FreeRTOS.h"
@@ -185,14 +186,17 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
   topic.trim();
   
   String content = ((String)payload).substring(0, len);
-  Serial.print(content); Serial.println();
+  Serial.print("Content: '"); Serial.print(content); Serial.print("'"); Serial.println();
 
   if (topic == "escaperoom/puzzles/changedifficulty") {
     int difficulty = content.toInt();
     tonePasswordLength = getPasswordLengthFromDifficulty(difficulty);
     tonePasswordLength = max(min(tonePasswordLength, 8), 3);
     Serial.print("Changing difficulty to: "); Serial.print(difficulty); Serial.print("\t password length now: "); Serial.println(tonePasswordLength);
-  } else {
+  } else if (topic == "escaperoom/puzzles/startroom") {
+    Serial.println("Start new run, get ID out!");
+  }
+  else {
     Serial.print("no match");
   }
 }
@@ -336,7 +340,9 @@ void loop() {
         resetInputTimer.Stop();
         
         // Publish Unlocked
-        PublishMqtt("escaperoom/puzzles/tonelock/puzzlesolved", "");
+        UUID messageId;
+        String message = "{\"Id\": \"" + String(messageId.toCharArray()) + "\",\"Headers\":{\"NServiceBus.EnclosedMessageTypes\":\"ToneLockSolved, Messages\"},\"Body\":\"eyJSdW5JZCI6IjMzMyJ9\"}";
+        PublishMqtt("escaperoom/puzzles/tonelock/puzzlesolved", (char*)message.c_str());
       }
     }
   }

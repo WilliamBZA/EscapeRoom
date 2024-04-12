@@ -16,17 +16,19 @@ using System.Xml.Linq;
 
 namespace NserviceBus.Mqtt
 {
-    public class MqttMessagePump(string id, string receiveAddress, ISubscriptionManager? subscriptionManager, string server, int port, Action<string, Exception, CancellationToken> onCritical) : IMessageReceiver, IDisposable
+    public class MqttMessagePump(string id, string receiveAddress, List<string> topicsToSubscribeTo, string server, int port, Action<string, Exception, CancellationToken> onCritical) : IMessageReceiver, IDisposable
     {
         public string Server { get; } = server;
 
         public int Port { get; } = port;
 
-        public ISubscriptionManager? Subscriptions { get; } = subscriptionManager;
+        public List<string> TopicsToSubscribeTo { get; } = topicsToSubscribeTo;
 
         public string Id { get; } = id;
 
         public string ReceiveAddress { get; } = receiveAddress;
+
+        public ISubscriptionManager? Subscriptions => new MqttSubscriptionManager();
 
         public Task ChangeConcurrency(PushRuntimeSettings limitations, CancellationToken cancellationToken = default)
         {
@@ -56,58 +58,67 @@ namespace NserviceBus.Mqtt
 
             var clientOptions = new MqttClientOptionsBuilder()
                 .WithTcpServer(Server, Port)
-                .WithCleanStart(false)
+                .WithCleanStart(true)
                 .Build();
+
+            await client.ConnectAsync(clientOptions, CancellationToken.None);
 
             client.ApplicationMessageReceivedAsync += async e =>
             {
+                Logger.Info($"Message receieved on topic '{e.ApplicationMessage.Topic}'");
                 var context = new ContextBag();
-                e.AutoAcknowledge = false;
 
                 if (onMessage != null)
                 {
                     for (int processingAttempt = 1; true; processingAttempt++)
                     {
-                        var message = UnwrapMessage(e.ApplicationMessage.PayloadSegment, context);
-
                         try
                         {
-                            await onMessage(message, messageProcessingCancellationTokenSource.Token);
-                            break;
+                            var message = UnwrapMessage(e.ApplicationMessage.PayloadSegment, context);
+                            try
+                            {
+                                await onMessage(message, messageProcessingCancellationTokenSource.Token);
+                                await e.AcknowledgeAsync(messageProcessingCancellationTokenSource.Token);
+                                break;
+                            }
+                            catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
+                            {
+                                Logger.Error("Message processing failed.", ex);
+                                var unwrappedAgain = UnwrapMessage(e.ApplicationMessage.PayloadSegment, context);
+
+                                var errorContext = new ErrorContext(ex, unwrappedAgain.Headers, message.NativeMessageId, message.Body, message.TransportTransaction, processingAttempt, ReceiveAddress, context);
+
+                                try
+                                {
+                                    var result = await onError(errorContext, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
+
+                                    e.IsHandled = result != ErrorHandleResult.RetryRequired;
+                                    e.ProcessingFailed = result == ErrorHandleResult.RetryRequired;
+
+                                    if (e.IsHandled)
+                                    {
+                                        break;
+                                    }
+                                }
+                                catch (Exception onErrorEx) when (!ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
+                                {
+                                    if (onCritical != null)
+                                    {
+                                        onCritical($"Failed to execute recoverability policy for message with native ID: `{message.NativeMessageId}`", onErrorEx, messageProcessingCancellationTokenSource.Token);
+                                    }
+                                    e.ProcessingFailed = true;
+                                }
+                            }
                         }
                         catch (Exception ex) when (!ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
                         {
-                            Logger.Error("Message processing failed.", ex);
-                            var unwrappedAgain = UnwrapMessage(e.ApplicationMessage.PayloadSegment, context);
-
-                            var errorContext = new ErrorContext(ex, unwrappedAgain.Headers, message.NativeMessageId, message.Body, message.TransportTransaction, processingAttempt, ReceiveAddress, context);
-
-                            try
-                            {
-                                var result = await onError(errorContext, messageProcessingCancellationTokenSource.Token).ConfigureAwait(false);
-
-                                e.IsHandled = result != ErrorHandleResult.RetryRequired;
-                                e.ProcessingFailed = result == ErrorHandleResult.RetryRequired;
-
-                                if (e.IsHandled)
-                                {
-                                    break;
-                                }
-                            }
-                            catch (Exception onErrorEx) when (!ex.IsCausedBy(messageProcessingCancellationTokenSource.Token))
-                            {
-                                if (onCritical != null)
-                                {
-                                    onCritical($"Failed to execute recoverability policy for message with native ID: `{message.NativeMessageId}`", onErrorEx, messageProcessingCancellationTokenSource.Token);
-                                }
-                                e.ProcessingFailed = true;
-                            }
+                            Logger.Error("Could not deserialize message", ex);
+                            // poison message, discard.
+                            break;
                         }
                     }
                 }
             };
-
-            await client.ConnectAsync(clientOptions, CancellationToken.None);
 
             var subscribeOptions = new MqttTopicFilterBuilder()
                 .WithTopic(ReceiveAddress)
@@ -115,7 +126,13 @@ namespace NserviceBus.Mqtt
                 .Build();
             await client.SubscribeAsync(subscribeOptions, messagePumpCancellationTokenSource.Token);
 
-            // Todo: subscribe to other that the endpoint is subscribed to
+            foreach (var topic in topicsToSubscribeTo)
+            {
+                await client.SubscribeAsync(new MqttTopicFilterBuilder()
+                    .WithTopic(topic)
+                    .WithAtLeastOnceQoS()
+                    .Build(), messagePumpCancellationTokenSource.Token);
+            }
         }
 
         private MessageContext UnwrapMessage(ArraySegment<byte> payload, ContextBag contextBag)
@@ -126,7 +143,7 @@ namespace NserviceBus.Mqtt
                 throw new ArgumentException("Unable to deserialize the payload");
             }
 
-            wrappedMessage.Id = wrappedMessage.Headers.ContainsKey(NServiceBus.Headers.MessageId) ? wrappedMessage.Headers[NServiceBus.Headers.MessageId] : Guid.Empty.ToString();
+            wrappedMessage.Id = wrappedMessage.Headers.ContainsKey(NServiceBus.Headers.MessageId) ? wrappedMessage.Headers[NServiceBus.Headers.MessageId] : Guid.NewGuid().ToString();
 
             return new MessageContext(wrappedMessage.Id, wrappedMessage.Headers, wrappedMessage.Body, new TransportTransaction(), ReceiveAddress, contextBag);
         }
