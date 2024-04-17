@@ -17,6 +17,9 @@ Settings* settings = new Settings();
 WiFiConnectionManager wifiManager(settings);
 int topicCount = 0;
 
+Timer servoMove(6);
+int servoTarget = 0;
+int servoCurrent = 0;
 Servo chestServo;
 
 TimerHandle_t wifiReconnectTimer;
@@ -89,6 +92,8 @@ void SuscribeMqtt() {
 
   String topic = "escaperoom/puzzles/" + settings->deviceName + "/unlock";
   subscribeTo(topic.c_str());
+
+  subscribeTo("escaperoom/puzzles/startroom");
 }
 
 void PublishMqtt(char* topic, char* payload) {
@@ -130,10 +135,13 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
   String topic = (String)cTopic;
   topic.trim();
 
-  Serial.print("Publish received on topic: "); Serial.println(topic);
-  
-  // open chest?
-  chestServo.write(120);
+  Serial.print("Publish received on topic: "); Serial.println(cTopic);
+
+  if (topic == "escaperoom/puzzles/startroom") {
+    servoTarget = 0;
+  } else {
+    servoTarget = 90;
+  }
 }
 
 void WiFiEvent(WiFiEvent_t event) {
@@ -156,7 +164,11 @@ void diganosticsTimerCallback(TimerHandle_t timer) {
 void setup() {
   pinMode(REDLED_PIN, OUTPUT);
   chestServo.attach(SERVO_PIN);
+  
   chestServo.write(0);
+  servoTarget = 0;
+  servoCurrent = 0;
+  servoMove.Start();
 
   Serial.begin(115200);
   while (!Serial) { }
@@ -186,5 +198,15 @@ void loop() {
 
   if (millis() > ledsOffTime) {
     digitalWrite(REDLED_PIN, LOW);
+  }
+
+  if (servoMove.Check() && servoTarget != servoCurrent) {
+    if (servoCurrent < servoTarget) {
+      servoCurrent++;
+      chestServo.write(servoCurrent);
+    } else if (servoCurrent > servoTarget) {
+      servoCurrent--;
+      chestServo.write(servoCurrent);
+    }
   }
 }
