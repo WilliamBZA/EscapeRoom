@@ -17,9 +17,9 @@ Settings* settings = new Settings();
 WiFiConnectionManager wifiManager(settings);
 int topicCount = 0;
 
-Timer servoMove(6);
-int servoTarget = 0;
-int servoCurrent = 0;
+Timer servoMove(1);
+float servoTarget = 0;
+float servoCurrent = 0;
 Servo chestServo;
 
 TimerHandle_t wifiReconnectTimer;
@@ -165,7 +165,7 @@ void setup() {
   pinMode(REDLED_PIN, OUTPUT);
   chestServo.attach(SERVO_PIN);
   
-  chestServo.write(0);
+  chestServo.write(0.1);
   servoTarget = 0;
   servoCurrent = 0;
   servoMove.Start();
@@ -200,12 +200,12 @@ void loop() {
     digitalWrite(REDLED_PIN, LOW);
   }
 
-  if (servoMove.Check() && servoTarget != servoCurrent) {
+  if (servoMove.Check() && (int)(10 * servoTarget) != (int)(10 * servoCurrent)) {
     if (servoCurrent < servoTarget) {
-      servoCurrent++;
+      servoCurrent += 0.1;
       chestServo.write(servoCurrent);
     } else if (servoCurrent > servoTarget) {
-      servoCurrent--;
+      servoCurrent -= 0.1;
       chestServo.write(servoCurrent);
     }
   }
