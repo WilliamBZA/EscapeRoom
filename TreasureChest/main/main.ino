@@ -140,7 +140,7 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
   if (topic == "escaperoom/puzzles/startroom") {
     servoTarget = 0;
   } else {
-    servoTarget = 90;
+    servoTarget = 110;
   }
 }
 
