@@ -28,18 +28,11 @@ void Settings::loadDeviceSettings() {
   File settingsFile = SPIFFS.open("/settings.json", "r");
   if (!settingsFile) {
     Serial.println("No settings file found");
-    deviceName = "simonsays1";
 
     return;
   }
 
   StaticJsonDocument<384> doc;
-
-  deviceName = "simonsays1";
-  wifiPassword = "DaisyToddAndButt";
-  ssid = "dropitlikeaSquat";
-
-  saveCurrentSettings();
 
   DeserializationError error = deserializeJson(doc, settingsFile);
   if (error) {
