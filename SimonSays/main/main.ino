@@ -42,7 +42,6 @@ int currentSolveIndex = 0;
 String unlockOrder[12] = {"simonsays30", "simonsays31", "simonsays10", "simonsays21", "simonsays10", "simonsays20", "simonsays11"};
 
 void displayCorrectPassword() {
-  // start timer 
   correctGuessPlayer->start();
 }
 

@@ -69,12 +69,6 @@ void OnMqttUnsubscribe(uint16_t packetId) {
   Serial.println(packetId);
 }
 
-void OnMqttPublish(uint16_t packetId) {
-  Serial.println("Publish acknowledged.");
-  Serial.print("  packetId: ");
-  Serial.println(packetId);
-}
-
 void subscribeTo(const char* topic) {
   uint16_t packetIdSub = mqttClient.subscribe(topic, 1);
   Serial.print("Subscribing to topic '"); Serial.print(topic); Serial.print("' at QoS 1, packetId: "); Serial.println(packetIdSub);
@@ -87,11 +81,12 @@ void SuscribeMqtt() {
 
   String topic = "escaperoom/puzzles/" + settings->deviceName + "/unlock";
   subscribeTo(topic.c_str());
+  subscribeTo("escaperoom/puzzles/simonsays/puzzlesolved");
 }
 
 void PublishMqtt(char* topic, char* payload) {
   Serial.print("Publishing to topic '"); Serial.print(topic); Serial.print("' with payload: '"); Serial.print(payload); Serial.println("'");
-  mqttClient.publish(topic, 1, true, payload);
+  mqttClient.publish(topic, 1, false, payload);
 }
 
 void ReconnectToWifi() {
@@ -119,7 +114,6 @@ void InitMqtt() {
   mqttClient.onUnsubscribe(OnMqttUnsubscribe);
 
   mqttClient.onMessage(OnMqttReceived);
-  mqttClient.onPublish(OnMqttPublish);
 
   mqttClient.setServer("192.168.88.114", 1883);
 }

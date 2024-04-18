@@ -133,7 +133,7 @@ void SuscribeMqtt() {
 
 void PublishMqtt(char* topic, char* payload) {
   Serial.print("Publishing to topic '"); Serial.print(topic); Serial.print("' with payload: '"); Serial.print(payload); Serial.println("'");
-  mqttClient.publish(topic, 1, true, payload);
+  mqttClient.publish(topic, 1, false, payload);
 }
 
 void ReconnectToWifi() {
