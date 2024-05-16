@@ -93,6 +93,8 @@ void SuscribeMqtt() {
   String topic = "escaperoom/puzzles/" + settings->deviceName + "/unlock";
   subscribeTo(topic.c_str());
 
+  subscribeTo("escaperoom/puzzles/simonsays/puzzlesolved");
+  subscribeTo("escaperoom/puzzles/tonelock/puzzlesolved");
   subscribeTo("escaperoom/puzzles/startroom");
 }
 

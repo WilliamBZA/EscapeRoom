@@ -32,7 +32,7 @@ char keyMap[ROWS][COLS] = {
 Settings* settings = new Settings();
 WiFiConnectionManager wifiManager(settings);
 Timer resetInputTimer(3000);
-int tonePasswordLength = 4;
+int tonePasswordLength = 6;
 long debounceTimer;
 int currentPasswordIndex = 0;
 int topicCount = 0;
@@ -289,13 +289,13 @@ void playPasswordTone() {
 
   tone(BUZZER_PIN, NOTE_D5, 200);
   tone(BUZZER_PIN, 0, 50);
-/*
+
   tone(BUZZER_PIN, NOTE_C5, 400);
   tone(BUZZER_PIN, 0, 50);
 
   tone(BUZZER_PIN, NOTE_B4, 400);
   tone(BUZZER_PIN, 0, 50);
-
+/*
   tone(BUZZER_PIN, NOTE_A4, 200);
   tone(BUZZER_PIN, 0, 50);
 
@@ -342,7 +342,6 @@ void loop() {
         UUID messageId;
         String message = "{\"Id\": \"" + String(messageId.toCharArray()) + "\",\"Headers\":{\"NServiceBus.EnclosedMessageTypes\":\"ToneLockSolved, Messages\"},\"Body\":\"eyJSdW5JZCI6IjMzMyJ9\"}";
         PublishMqtt("escaperoom/puzzles/tonelock/puzzlesolved", (char*)message.c_str());
-        PublishMqtt("escaperoom/puzzles/easytreasurechest/unlock", "");
       }
     }
   }

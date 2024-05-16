@@ -39,7 +39,7 @@ Timer puzzleSolvedTimer(1500);
 
 long ledsOffTime = -1;
 int currentSolveIndex = 0;
-String unlockOrder[12] = {"simonsays30", "simonsays31", "simonsays10", "simonsays21", "simonsays10", "simonsays20", "simonsays11"};
+String unlockOrder[12] = {"simonsays30", "simonsays31", "simonsays20", "simonsays31", "simonsays20", "simonsays30", "simonsays21"};
 
 void displayCorrectPassword() {
   correctGuessPlayer->start();

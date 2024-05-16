@@ -14,6 +14,15 @@
 #include "settings.h"
 #include "time.h"
 
+// Set your Static IP address
+IPAddress local_IP(192, 168, 88, 18);
+// Set your Gateway IP address
+IPAddress gateway(192, 168, 88, 1);
+
+IPAddress subnet(255, 255, 0, 0);
+IPAddress primaryDNS(8, 8, 8, 8);   //optional
+IPAddress secondaryDNS(8, 8, 4, 4); //optional
+
 WiFiConnectionManager::WiFiConnectionManager(Settings* settingsInstance) {
   settings = settingsInstance;
 }
@@ -31,6 +40,11 @@ bool WiFiConnectionManager::connectToWifi(void (*wifiEventCallback)(WiFiEvent_t 
     Serial.print("Saved Password is "); Serial.println(settings->wifiPassword);
 
     WiFi.mode(WIFI_STA);
+
+    if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+      Serial.println("STA Failed to configure");
+    }
+    
     Serial.println("\nConnecting to WiFi Network ..");
     WiFi.begin(settings->ssid, settings->wifiPassword);
 
