@@ -8,3 +8,8 @@ public class ToneLockSolved
 {
     public string RunId { get; set; }
 }
+
+public class ToneLockCompleted
+{
+    public string RunId { get; set; }
+}

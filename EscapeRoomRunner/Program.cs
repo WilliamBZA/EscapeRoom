@@ -7,13 +7,14 @@ namespace EscapeRoomManager
     {
         static async Task Main(string[] args)
         {
-            var mqtt = new MqttTransport("192.168.88.114");
+            var mqtt = new MqttTransport("localhost");
             mqtt.SubscribeTo("escaperoom/puzzles/tonelock/puzzlesolved");
 
             var endpointConfiguration = new EndpointConfiguration("escaperoom");
             var routing = endpointConfiguration.UseTransport(mqtt);
 
             routing.RouteToEndpoint(typeof(RunStarted), "escaperoom/puzzles/startroom");
+            routing.DoNotEnforceBestPractices();
 
             endpointConfiguration.SendFailedMessagesTo("error");
             endpointConfiguration.EnableInstallers();
@@ -28,6 +29,7 @@ namespace EscapeRoomManager
 
             Console.WriteLine("Press any key to exit");
             Console.ReadKey();
+
             await endpointInstance.Stop();
         }
     }

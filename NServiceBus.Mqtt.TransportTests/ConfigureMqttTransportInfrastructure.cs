@@ -31,7 +31,7 @@ public class ConfigureMqttTransportInfrastructure : IConfigureTransportInfrastru
     {
         LogManager.UseFactory(new ConsoleLoggerFactory());
 
-        var transport = new MqttTransport("192.168.88.114", 1883);
+        var transport = new MqttTransport("localhost", 1883);
 
         return transport;
     }

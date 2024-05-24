@@ -9,8 +9,7 @@ PlayCorrectPasswordTimer::PlayCorrectPasswordTimer(void (*publishFunction)(char*
 void PlayCorrectPasswordTimer::start() {
   lastTriggerTime = millis();
 
-  step = 1;
-  publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/0", "");
+  step = 0;
 }
 
 // "simonsays30", "simonsays31", "simonsays20", "simonsays31", "simonsays20", "simonsays30", "simonsays21"
@@ -18,6 +17,10 @@ void PlayCorrectPasswordTimer::playPassword_loop() {
   if (lastTriggerTime != -1) {
     if (millis() - lastTriggerTime >= 1000) {
       switch (step) {
+        case 0:
+          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/0", "");
+          break;
+
         case 1:
           publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/1", "");
           break;
@@ -42,7 +45,7 @@ void PlayCorrectPasswordTimer::playPassword_loop() {
           publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/1", "");
           break;
   
-        /*case 7:
+        case 7:
           publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/0", "");
           break;
   
@@ -59,8 +62,20 @@ void PlayCorrectPasswordTimer::playPassword_loop() {
           break;
   
         case 11:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays1/0", "");
-          break;*/
+          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/0", "");
+          break;
+
+        case 12:
+          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/1", "");
+          break;
+  
+        case 13:
+          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/1", "");
+          break;
+  
+        case 14:
+          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/0", "");
+          break;
   
         default:
           lastTriggerTime = -1;
