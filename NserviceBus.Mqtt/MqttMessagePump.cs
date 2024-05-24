@@ -154,16 +154,10 @@ namespace NserviceBus.Mqtt
             {
             }
 
-            if (messagePumpCancellationTokenSource is not null)
+            if (messagePumpCancellationTokenSource is not null && !messagePumpCancellationTokenSource.IsCancellationRequested)
             {
                 messagePumpCancellationTokenSource?.Cancel();
                 messagePumpCancellationTokenSource?.Dispose();
-                messagePumpCancellationTokenSource = null;
-
-                messageProcessingCancellationTokenSource?.Cancel();
-                messageProcessingCancellationTokenSource?.Dispose();
-                messageProcessingCancellationTokenSource = null;
-                client?.Dispose();
             }
 
             return Task.CompletedTask;

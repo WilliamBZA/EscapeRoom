@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Messages\Messages.csproj" />
     <ProjectReference Include="..\NserviceBus.Mqtt\NserviceBus.Mqtt.csproj" />
   </ItemGroup>
 

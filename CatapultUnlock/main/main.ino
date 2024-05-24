@@ -3,24 +3,19 @@
 #include "settings.h"
 #include "WifiConnectionManager.h"
 #include "Timer.h"
-#include <ESP32Servo.h>
 
 extern "C" {
   #include "freertos/FreeRTOS.h"
   #include "freertos/timers.h"
 }
 
-#define SERVO_PIN 14
+#define RELAY_PIN 22
 #define REDLED_PIN 23
 
 Settings* settings = new Settings();
 WiFiConnectionManager wifiManager(settings);
+Timer relockMaglockTimer(3000);
 int topicCount = 0;
-
-Timer servoMove(1);
-float servoTarget = 0;
-float servoCurrent = 0;
-Servo chestServo;
 
 TimerHandle_t wifiReconnectTimer;
 TimerHandle_t mqttReconnectTimer;
@@ -86,10 +81,6 @@ void SuscribeMqtt() {
 
   String topic = "escaperoom/puzzles/" + settings->deviceName + "/unlock";
   subscribeTo(topic.c_str());
-
-  subscribeTo("escaperoom/puzzles/simonsays/puzzlesolved");
-  subscribeTo("escaperoom/puzzles/tonelock/puzzlesolved");
-  subscribeTo("escaperoom/puzzles/startroom");
 }
 
 void PublishMqtt(char* topic, char* payload) {
@@ -130,13 +121,13 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
   String topic = (String)cTopic;
   topic.trim();
 
-  Serial.print("Publish received on topic: "); Serial.println(cTopic);
+  Serial.print("Publish received on topic: "); Serial.println(topic);
+  
+  String content = ((String)payload).substring(0, len);
+  Serial.print(content); Serial.println();
 
-  if (topic == "escaperoom/puzzles/startroom") {
-    servoTarget = 0;
-  } else {
-    servoTarget = 110;
-  }
+  digitalWrite(RELAY_PIN, LOW);
+  relockMaglockTimer.Start();
 }
 
 void WiFiEvent(WiFiEvent_t event) {
@@ -157,13 +148,10 @@ void diganosticsTimerCallback(TimerHandle_t timer) {
 }
 
 void setup() {
+  pinMode(RELAY_PIN, OUTPUT);
   pinMode(REDLED_PIN, OUTPUT);
-  chestServo.attach(SERVO_PIN);
-  
-  chestServo.write(0.1);
-  servoTarget = 0;
-  servoCurrent = 0;
-  servoMove.Start();
+
+  digitalWrite(RELAY_PIN, HIGH);
 
   Serial.begin(115200);
   while (!Serial) { }
@@ -187,21 +175,15 @@ void setup() {
 }
 
 long ledsOffTime = -1;
-bool isOpen = false;
 void loop() {
   wifiManager.wifi_loop();
 
-  if (millis() > ledsOffTime) {
-    digitalWrite(REDLED_PIN, LOW);
+  if (relockMaglockTimer.Check()) {
+    relockMaglockTimer.Stop();
+    digitalWrite(RELAY_PIN, HIGH);
   }
 
-  if (servoMove.Check() && (int)(10 * servoTarget) != (int)(10 * servoCurrent)) {
-    if (servoCurrent < servoTarget) {
-      servoCurrent += 0.1;
-      chestServo.write(servoCurrent);
-    } else if (servoCurrent > servoTarget) {
-      servoCurrent -= 0.1;
-      chestServo.write(servoCurrent);
-    }
+  if (millis() > ledsOffTime) {
+    digitalWrite(REDLED_PIN, LOW);
   }
 }

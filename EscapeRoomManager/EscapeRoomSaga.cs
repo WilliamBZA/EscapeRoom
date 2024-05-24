@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace EscapeRoomManager
 {
-    public class EscapeRoomSaga : Saga<EscapeRoomRun>, IAmStartedByMessages<RunStarted>, IAmStartedByMessages<ToneLockSolved>
+    public class EscapeRoomSaga : Saga<EscapeRoomRun>, IAmStartedByMessages<RunStarted>, IAmStartedByMessages<ToneLockCompleted>
     {
-        public async Task Handle(ToneLockSolved message, IMessageHandlerContext context)
+        public async Task Handle(ToneLockCompleted message, IMessageHandlerContext context)
         {
             DateTime startTime = Data.StartTime ?? DateTime.Now;
             var solveTime = DateTime.Now - startTime;
@@ -38,7 +38,7 @@ namespace EscapeRoomManager
         {
             mapper.MapSaga(saga => saga.RunId)
                 .ToMessage<RunStarted>(tone => tone.RunId)
-                .ToMessage<ToneLockSolved>(tone => tone.RunId);
+                .ToMessage<ToneLockCompleted>(tone => tone.RunId);
         }
     }
 }

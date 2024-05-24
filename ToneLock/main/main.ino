@@ -300,7 +300,7 @@ void playPasswordTone() {
   tone(BUZZER_PIN, 0, 50);
 
   tone(BUZZER_PIN, NOTE_A4, 400);
-  tone(BUZZER_PIN, 0, 50);*/
+  tone(BUZZER_PIN, 0, 50);
 }
 
 long ledsOffTime = -1;

@@ -22,12 +22,19 @@ namespace EscapeRoomBridge
             })
             .UseNServiceBusBridge((ctx, bridgeConfiguration) =>
             {
-                var escapeRoom = new BridgeTransport(new MqttTransport("192.168.88.114"));
-                escapeRoom.HasEndpoint("escaperoom");
+                var escapeRoom = new BridgeTransport(new MqttTransport("localhost"));
 
+                var iotEndpoint = new BridgeEndpoint("escaperoom");
+                iotEndpoint.RegisterPublisher<RunStarted>("EscapeRoomManager");
+
+                escapeRoom.HasEndpoint("escaperoom");
+                escapeRoom.AutoCreateQueues = true;
+
+                var escapeRoomManagerEndpoint = new BridgeEndpoint("EscapeRoomManager");
+                escapeRoomManagerEndpoint.RegisterPublisher<ToneLockCompleted>("escaperoom");
 
                 var rabbitBridge = new BridgeTransport(new RabbitMQTransport(RoutingTopology.Conventional(QueueType.Quorum), "host=localhost"));
-                rabbitBridge.HasEndpoint("EscapeRoomManager");
+                rabbitBridge.HasEndpoint(escapeRoomManagerEndpoint);
                 rabbitBridge.AutoCreateQueues = true;
 
                 bridgeConfiguration.AddTransport(escapeRoom);

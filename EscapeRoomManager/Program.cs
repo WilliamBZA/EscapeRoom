@@ -6,8 +6,12 @@ namespace EscapeRoomManager
     {
         static async Task Main(string[] args)
         {
+            // {"Id":"9222e65a-dbae-4e4e-a654-b1780074522b","Headers":{"NServiceBus.EnclosedMessageTypes":"ToneLockSolved"},"Body":"eyJSdW5JZCI6IjEyMyJ9"}
             var endpointConfiguration = new EndpointConfiguration("EscapeRoomManager");
-            endpointConfiguration.UseTransport(new RabbitMQTransport(RoutingTopology.Conventional(QueueType.Quorum), "host=localhost"));
+            var routing = endpointConfiguration.UseTransport(new RabbitMQTransport(RoutingTopology.Conventional(QueueType.Quorum), "host=localhost"));
+
+            routing.RouteToEndpoint(typeof(RunStarted), "EscapeRoomManager");
+            routing.RouteToEndpoint(typeof(RunStarted), "escaperoom");
 
             endpointConfiguration.SendFailedMessagesTo("error");
             endpointConfiguration.EnableInstallers();
@@ -17,10 +21,10 @@ namespace EscapeRoomManager
             var endpointInstance = await Endpoint.Start(endpointConfiguration);
 
 
-            Console.WriteLine("Press any key to exit");
+            Console.WriteLine("Press any key to start saga");
             Console.ReadKey();
 
-            await endpointInstance.SendLocal(new RunStarted { RunId = "123", TeamName = "Testing" });
+            await endpointInstance.Publish(new RunStarted { RunId = "123", TeamName = "Testing" });
 
             Console.WriteLine("Press any key to exit");
             Console.ReadKey();

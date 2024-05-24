@@ -245,8 +245,9 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
       Serial.println("Good next guess");
       currentSolveIndex++;
 
-      if (currentSolveIndex >= 7) {
+      if (currentSolveIndex >= 16) {
         PublishMqtt("escaperoom/puzzles/simonsays/puzzlesolved", "");
+        PublishMqtt("escaperoom/puzzles/hardtreasurechest/unlock", "");
         currentSolveIndex = 0;
       }
     } else {

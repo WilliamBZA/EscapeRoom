@@ -9,10 +9,11 @@ namespace EscapeRoomIoTRunner
 {
     public class EscapeRoomIotHandler : IHandleMessages<ToneLockSolved>
     {
-        public Task Handle(ToneLockSolved message, IMessageHandlerContext context)
+        public async Task Handle(ToneLockSolved message, IMessageHandlerContext context)
         {
             Console.WriteLine("Tone lock solved");
-            return Task.CompletedTask;
+
+            await context.Publish(new ToneLockCompleted { RunId = message.RunId });
         }
     }
 }
