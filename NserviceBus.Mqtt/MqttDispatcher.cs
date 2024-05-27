@@ -13,8 +13,10 @@ using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
 
 namespace NserviceBus.Mqtt
 {
-    class MqttDispatcher(string server, int port, MqttSubscriptionManager subscriptionStore) : IMessageDispatcher
+    class MqttDispatcher(string server, int port) : IMessageDispatcher
     {
+        static SemaphoreSlim connectionSemaphore = new SemaphoreSlim(1, 1);
+
         public string Server { get; } = server;
 
         public int Port { get; } = port;
@@ -26,7 +28,7 @@ namespace NserviceBus.Mqtt
                 await PublishMessage(msg, cancellationToken);
             }
 
-            foreach (var msg in outgoingMessages.MulticastTransportOperations.SelectMany(ConvertToUnicastMessage))
+            foreach (var msg in outgoingMessages.MulticastTransportOperations.Select(ConvertToUnicastMessage))
             {
                 if (msg != null)
                 {
@@ -35,11 +37,29 @@ namespace NserviceBus.Mqtt
             }
         }
 
-        private IEnumerable<UnicastTransportOperation?> ConvertToUnicastMessage(MulticastTransportOperation message)
+        public async Task ConnectToMqttBroker()
         {
-            var subscribers = subscriptionStore.GetSubscribers(message.MessageType);
+            await connectionSemaphore.WaitAsync();
 
-            return subscribers.Select(subscription => new UnicastTransportOperation(message.Message, subscription, message.Properties, message.RequiredDispatchConsistency));
+            var mqttFactory = new MqttFactory();
+            client = mqttFactory.CreateMqttClient();
+
+            var clientOptions = new MqttClientOptionsBuilder()
+                .WithTcpServer(Server, Port)
+                .WithCleanStart(true)
+                .Build();
+
+            if (!client.IsConnected)
+            {
+                await client.ConnectAsync(clientOptions, CancellationToken.None);
+            }
+
+            connectionSemaphore.Release();
+        }
+
+        private UnicastTransportOperation? ConvertToUnicastMessage(MulticastTransportOperation message)
+        {
+            return new UnicastTransportOperation(message.Message, $"events/{message.MessageType.Name}", message.Properties, message.RequiredDispatchConsistency);
         }
 
         private async Task PublishMessage(UnicastTransportOperation message, CancellationToken cancellationToken)
@@ -52,17 +72,17 @@ namespace NserviceBus.Mqtt
             }
 
             var outgoingMessage = new MqttApplicationMessageBuilder()
-                        .WithTopic(message.Destination)
+                        .WithTopic(message.Destination.Replace("_", "/"))
                         .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                         .WithPayload(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(wrapper)))
             .Build();
 
-            if (MqttMessagePump.client != null)
+            if (client != null)
             {
-                await MqttMessagePump.client.PublishAsync(outgoingMessage, cancellationToken);
+                await client.PublishAsync(outgoingMessage, cancellationToken);
             }
         }
 
-        MqttSubscriptionManager subscriptionStore = subscriptionStore;
+        IMqttClient? client;
     }
 }

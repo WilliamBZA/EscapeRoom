@@ -31,11 +31,6 @@ namespace NserviceBus.Mqtt
             return Task.CompletedTask;
         }
 
-        public IEnumerable<string> GetSubscribers(Type messageType)
-        {
-            yield return $"events/{messageType.Name}";
-        }
-
         MqttMessagePump messagePump;
     }
 }

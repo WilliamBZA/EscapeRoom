@@ -221,7 +221,7 @@ namespace NserviceBus.Mqtt
         CancellationTokenSource? messagePumpCancellationTokenSource;
         CancellationTokenSource? messageProcessingCancellationTokenSource;
 
-        public static IMqttClient? client;
+        public IMqttClient? client;
 
         bool disposed = false;
         static readonly ILog Logger = LogManager.GetLogger(typeof(MqttMessagePump));
