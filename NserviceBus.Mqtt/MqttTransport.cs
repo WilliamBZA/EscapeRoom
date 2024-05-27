@@ -21,14 +21,14 @@ namespace NserviceBus.Mqtt
 
         public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes() => new[] { TransportTransactionMode.ReceiveOnly };
 
-        public override Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
+        public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
         {
             var infrastructure = new MqttTransportInfrastructure(hostSettings, this, receivers, Server, Port);
 
             infrastructure.ConfigureReceiveInfrastructure(subscriptions);
-            infrastructure.ConfigureSendInfrastructure();
+            await infrastructure.ConfigureSendInfrastructure();
 
-            return Task.FromResult<TransportInfrastructure>(infrastructure);
+            return infrastructure;
         }
 
         [Obsolete]
