@@ -24,14 +24,14 @@ namespace EscapeRoomBridge
             {
                 var escapeRoom = new BridgeTransport(new MqttTransport("localhost"));
 
-                var iotEndpoint = new BridgeEndpoint("escaperoom");
+                var iotEndpoint = new BridgeEndpoint("escaperoom/puzzles/tonelock");
                 iotEndpoint.RegisterPublisher<RunStarted>("EscapeRoomManager");
 
-                escapeRoom.HasEndpoint("escaperoom");
+                escapeRoom.HasEndpoint(iotEndpoint);
                 escapeRoom.AutoCreateQueues = true;
 
                 var escapeRoomManagerEndpoint = new BridgeEndpoint("EscapeRoomManager");
-                escapeRoomManagerEndpoint.RegisterPublisher<ToneLockCompleted>("escaperoom");
+                escapeRoomManagerEndpoint.RegisterPublisher<PuzzleSolved>("escaperoom/puzzles/tonelock");
 
                 var rabbitBridge = new BridgeTransport(new RabbitMQTransport(RoutingTopology.Conventional(QueueType.Quorum), "host=localhost"));
                 rabbitBridge.HasEndpoint(escapeRoomManagerEndpoint);

@@ -42,12 +42,14 @@ namespace NserviceBus.Mqtt
             var queueAddress = ToTransportAddress(receiveSettings.ReceiveAddress);
 
             var pump = new MqttMessagePump(receiveSettings.Id, queueAddress, subscribers, Server, Port, settings.CriticalErrorAction);
+
+            subscriptionManager = (MqttSubscriptionManager)pump.Subscriptions;
             return pump;
         }
 
         public void ConfigureSendInfrastructure()
         {
-            Dispatcher = new MqttDispatcher(Server, Port);
+            Dispatcher = new MqttDispatcher(Server, Port, subscriptionManager);
         }
 
         public override async Task Shutdown(CancellationToken cancellationToken = default)
@@ -57,9 +59,10 @@ namespace NserviceBus.Mqtt
 
         public override string ToTransportAddress(QueueAddress address)
         {
-            return address.BaseAddress;
+            return address.BaseAddress.Replace("_", "/");
         }
 
+        MqttSubscriptionManager subscriptionManager;
         readonly HostSettings settings;
         readonly ReceiveSettings[] receiverSettings;
         readonly MqttTransport transport;

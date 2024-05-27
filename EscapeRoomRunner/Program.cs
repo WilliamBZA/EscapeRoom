@@ -1,19 +1,18 @@
 ﻿using NserviceBus.Mqtt;
 using NServiceBus;
 
-namespace EscapeRoomManager
+namespace EscapeRoomIoTRunner
 {
     internal class Program
     {
         static async Task Main(string[] args)
         {
             var mqtt = new MqttTransport("localhost");
-            mqtt.SubscribeTo("escaperoom/puzzles/tonelock/puzzlesolved");
+            //mqtt.SubscribeTo("escaperoom/puzzles/tonelock/puzzlesolved");
 
-            var endpointConfiguration = new EndpointConfiguration("escaperoom");
+            var endpointConfiguration = new EndpointConfiguration("escaperoom_puzzles_tonelock");
             var routing = endpointConfiguration.UseTransport(mqtt);
 
-            routing.RouteToEndpoint(typeof(RunStarted), "escaperoom/puzzles/startroom");
             routing.DoNotEnforceBestPractices();
 
             endpointConfiguration.SendFailedMessagesTo("error");

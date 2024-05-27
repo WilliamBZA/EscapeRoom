@@ -9,10 +9,11 @@ using System.Threading.Tasks;
 using MQTTnet.Server;
 using System.Text.Json;
 using MQTTnet.Protocol;
+using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
 
 namespace NserviceBus.Mqtt
 {
-    class MqttDispatcher(string server, int port) : IMessageDispatcher
+    class MqttDispatcher(string server, int port, MqttSubscriptionManager subscriptionStore) : IMessageDispatcher
     {
         public string Server { get; } = server;
 
@@ -36,12 +37,19 @@ namespace NserviceBus.Mqtt
 
         private IEnumerable<UnicastTransportOperation?> ConvertToUnicastMessage(MulticastTransportOperation message)
         {
-            yield return null;
+            var subscribers = subscriptionStore.GetSubscribers(message.MessageType);
+
+            return subscribers.Select(subscription => new UnicastTransportOperation(message.Message, subscription, message.Properties, message.RequiredDispatchConsistency));
         }
 
         private async Task PublishMessage(UnicastTransportOperation message, CancellationToken cancellationToken)
         {
             var wrapper = new MessageWrapper { Body = message.Message.Body.ToArray(), Headers = message.Message.Headers, Id = message.Message.MessageId };
+
+            if (!wrapper.Headers.ContainsKey(Headers.MessageId) || string.IsNullOrEmpty(wrapper.Headers[Headers.MessageId]))
+            {
+                wrapper.Headers[Headers.MessageId] = message.Message.MessageId;
+            }
 
             var outgoingMessage = new MqttApplicationMessageBuilder()
                         .WithTopic(message.Destination)
@@ -55,7 +63,6 @@ namespace NserviceBus.Mqtt
             }
         }
 
-        IMqttClient? cliednt;
-        bool connected = false;
+        MqttSubscriptionManager subscriptionStore = subscriptionStore;
     }
 }

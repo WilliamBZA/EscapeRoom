@@ -10,8 +10,6 @@ namespace EscapeRoomManager
             var endpointConfiguration = new EndpointConfiguration("EscapeRoomManager");
             var routing = endpointConfiguration.UseTransport(new RabbitMQTransport(RoutingTopology.Conventional(QueueType.Quorum), "host=localhost"));
 
-            routing.RouteToEndpoint(typeof(RunStarted), "EscapeRoomManager");
-            routing.RouteToEndpoint(typeof(RunStarted), "escaperoom");
 
             endpointConfiguration.SendFailedMessagesTo("error");
             endpointConfiguration.EnableInstallers();

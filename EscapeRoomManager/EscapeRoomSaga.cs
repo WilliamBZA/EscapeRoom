@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace EscapeRoomManager
 {
-    public class EscapeRoomSaga : Saga<EscapeRoomRun>, IAmStartedByMessages<RunStarted>, IAmStartedByMessages<ToneLockCompleted>
+    public class EscapeRoomSaga : Saga<EscapeRoomRun>, IAmStartedByMessages<RunStarted>, IAmStartedByMessages<PuzzleSolved>
     {
-        public async Task Handle(ToneLockCompleted message, IMessageHandlerContext context)
+        public Task Handle(PuzzleSolved message, IMessageHandlerContext context)
         {
             DateTime startTime = Data.StartTime ?? DateTime.Now;
             var solveTime = DateTime.Now - startTime;
@@ -17,12 +17,14 @@ namespace EscapeRoomManager
 
             if (solveTime >= TimeSpan.FromMinutes(4))
             {
-                await context.Send(new OpenEasyLabyrinthBox());
+                //await context.Send(new OpenEasyLabyrinthBox());
             }
             else
             {
-                await context.Send(new OpenNormalLabyrinthBox());
+                //await context.Send(new OpenNormalLabyrinthBox());
             }
+
+            return Task.CompletedTask;
         }
 
         public Task Handle(RunStarted message, IMessageHandlerContext context)
@@ -38,7 +40,7 @@ namespace EscapeRoomManager
         {
             mapper.MapSaga(saga => saga.RunId)
                 .ToMessage<RunStarted>(tone => tone.RunId)
-                .ToMessage<ToneLockCompleted>(tone => tone.RunId);
+                .ToMessage<PuzzleSolved>(tone => tone.RunId);
         }
     }
 }

@@ -18,6 +18,8 @@ namespace NserviceBus.Mqtt
 {
     public class MqttMessagePump(string id, string receiveAddress, List<string> topicsToSubscribeTo, string server, int port, Action<string, Exception, CancellationToken> onCritical) : IMessageReceiver, IDisposable
     {
+        static SemaphoreSlim connectionSemaphore = new SemaphoreSlim(1, 1);
+
         public string Server { get; } = server;
 
         public int Port { get; } = port;
@@ -28,7 +30,7 @@ namespace NserviceBus.Mqtt
 
         public string ReceiveAddress { get; } = receiveAddress;
 
-        public ISubscriptionManager? Subscriptions => new MqttSubscriptionManager();
+        public ISubscriptionManager? Subscriptions => new MqttSubscriptionManager(this);
 
         public Task ChangeConcurrency(PushRuntimeSettings limitations, CancellationToken cancellationToken = default)
         {
@@ -53,6 +55,8 @@ namespace NserviceBus.Mqtt
 
         async Task ConnectToBroker()
         {
+            await connectionSemaphore.WaitAsync();
+
             var mqttFactory = new MqttFactory();
             client = mqttFactory.CreateMqttClient();
 
@@ -61,7 +65,10 @@ namespace NserviceBus.Mqtt
                 .WithCleanStart(true)
                 .Build();
 
-            await client.ConnectAsync(clientOptions, CancellationToken.None);
+            if (!client.IsConnected)
+            {
+                await client.ConnectAsync(clientOptions, CancellationToken.None);
+            }
 
             client.ApplicationMessageReceivedAsync += async e =>
             {
@@ -128,10 +135,24 @@ namespace NserviceBus.Mqtt
 
             foreach (var topic in topicsToSubscribeTo)
             {
-                await client.SubscribeAsync(new MqttTopicFilterBuilder()
-                    .WithTopic(topic)
-                    .WithAtLeastOnceQoS()
-                    .Build(), messagePumpCancellationTokenSource.Token);
+                await SubscribeToTopic(topic);
+            }
+
+            connectionSemaphore.Release();
+        }
+
+        public async Task SubscribeToTopic(string topic)
+        {
+            if (client is not null)
+            {
+                var result = await client.SubscribeAsync(new MqttTopicFilterBuilder()
+                        .WithTopic(topic)
+                        .WithAtLeastOnceQoS()
+                        .Build(), messagePumpCancellationTokenSource.Token);
+            }
+            else
+            {
+                topicsToSubscribeTo.Add(topic);
             }
         }
 
@@ -144,6 +165,11 @@ namespace NserviceBus.Mqtt
             }
 
             wrappedMessage.Id = wrappedMessage.Headers.ContainsKey(NServiceBus.Headers.MessageId) ? wrappedMessage.Headers[NServiceBus.Headers.MessageId] : Guid.NewGuid().ToString();
+
+            if (!wrappedMessage.Headers.ContainsKey(NServiceBus.Headers.MessageId))
+            {
+                wrappedMessage.Headers[NServiceBus.Headers.MessageId] = wrappedMessage.Id;
+            }
 
             return new MessageContext(wrappedMessage.Id, wrappedMessage.Headers, wrappedMessage.Body, new TransportTransaction(), ReceiveAddress, contextBag);
         }

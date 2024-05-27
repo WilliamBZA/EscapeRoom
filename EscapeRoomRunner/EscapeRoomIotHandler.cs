@@ -7,13 +7,17 @@ using System.Threading.Tasks;
 
 namespace EscapeRoomIoTRunner
 {
-    public class EscapeRoomIotHandler : IHandleMessages<ToneLockSolved>
+    public class EscapeRoomIotHandler : IHandleMessages<PuzzleSolved>, IHandleMessages<RunStarted>
     {
-        public async Task Handle(ToneLockSolved message, IMessageHandlerContext context)
+        public Task Handle(PuzzleSolved message, IMessageHandlerContext context)
         {
             Console.WriteLine("Tone lock solved");
+            return Task.CompletedTask;
+        }
 
-            await context.Publish(new ToneLockCompleted { RunId = message.RunId });
+        public async Task Handle(RunStarted message, IMessageHandlerContext context)
+        {
+            await context.Publish(new PuzzleSolved { RunId = message.RunId });
         }
     }
 }

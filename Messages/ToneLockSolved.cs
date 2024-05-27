@@ -4,12 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-public class ToneLockSolved
-{
-    public string RunId { get; set; }
-}
-
-public class ToneLockCompleted
+public class PuzzleSolved
 {
     public string RunId { get; set; }
 }

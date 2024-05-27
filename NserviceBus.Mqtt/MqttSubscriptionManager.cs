@@ -1,7 +1,9 @@
-﻿using NServiceBus.Extensibility;
+﻿using NServiceBus;
+using NServiceBus.Extensibility;
 using NServiceBus.Transport;
 using NServiceBus.Unicast.Messages;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,18 +13,29 @@ namespace NserviceBus.Mqtt
 {
     class MqttSubscriptionManager : ISubscriptionManager
     {
-        public MqttSubscriptionManager()
+        public MqttSubscriptionManager(MqttMessagePump messagePump)
         {
+            this.messagePump = messagePump;
         }
 
-        public Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
+        public async Task SubscribeAll(MessageMetadata[] eventTypes, ContextBag context, CancellationToken cancellationToken = default)
         {
-            return Task.CompletedTask;
+            foreach (var @event in eventTypes)
+            {
+                await messagePump.SubscribeToTopic($"events/{@event.MessageType.Name}");
+            }
         }
 
         public Task Unsubscribe(MessageMetadata eventType, ContextBag context, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
+
+        public IEnumerable<string> GetSubscribers(Type messageType)
+        {
+            yield return $"events/{messageType.Name}";
+        }
+
+        MqttMessagePump messagePump;
     }
 }
