@@ -33,9 +33,6 @@ void Settings::loadDeviceSettings() {
     return;
   }
 
-  deviceName = "drawbridge";
-  saveCurrentSettings();
-
   StaticJsonDocument<384> doc;
 
   DeserializationError error = deserializeJson(doc, settingsFile);

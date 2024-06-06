@@ -10,17 +10,26 @@ extern "C" {
   #include "freertos/timers.h"
 }
 
-#define DRAWBRIDGESERVO_PIN 15
-#define REDLED_PIN 23
+#define HACKYGROUND_PIN 5
+#define DRAWBRIDGESERVO_PIN 18
+#define BRIDGEUP_PIN 23
+
+#define HACKY3V_PIN 32
+#define RELEASESERVOATBOTTOM_PIN 33 
+#define RELEASESERVO_PIN 19
 
 Settings* settings = new Settings();
 WiFiConnectionManager wifiManager(settings);
 int topicCount = 0;
 
-Timer servoMove(1);
+
+Timer releaseCarTimer(1300);
+Timer lowerDrawBridgeTimer(900);
+Timer drawBridgeDownTimer(650);
 float servoTarget = 0;
 float servoCurrent = 0;
 Servo drawBridgeServo;
+Servo releaseServo;
 
 TimerHandle_t wifiReconnectTimer;
 TimerHandle_t mqttReconnectTimer;
@@ -30,8 +39,6 @@ AsyncMqttClient mqttClient;
 void clearStartupTimer() {
   xTimerStop(startupTimer, 0);
   xTimerDelete(startupTimer, 0);
-  
-  digitalWrite(REDLED_PIN, LOW);
 }
 
 void ConnectToMqtt() {
@@ -87,8 +94,8 @@ void SuscribeMqtt() {
   String topic = "escaperoom/puzzles/" + settings->deviceName + "/unlock";
   subscribeTo(topic.c_str());
 
-  subscribeTo("escaperoom/puzzles/simonsays/puzzlesolved");
-  subscribeTo("escaperoom/puzzles/tonelock/puzzlesolved");
+  subscribeTo("escaperoom/puzzles/hotwheels/lowerdrawbridge");
+  subscribeTo("escaperoom/puzzles/hotwheels/releasecar");
   subscribeTo("escaperoom/puzzles/startroom");
 }
 
@@ -132,10 +139,10 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
 
   Serial.print("Publish received on topic: "); Serial.println(cTopic);
 
-  if (topic == "escaperoom/puzzles/startroom") {
-    servoTarget = 0;
-  } else {
-    servoTarget = 110;
+  if (topic == "escaperoom/puzzles/hotwheels/lowerdrawbridge" && !lowerDrawBridgeTimer.IsRunning()) {
+    lowerDrawBridgeTimer.Start();
+  } else if (topic == "escaperoom/puzzles/hotwheels/releasecar") {
+    releaseServo.write(30);
   }
 }
 
@@ -151,19 +158,27 @@ void WiFiEvent(WiFiEvent_t event) {
 
 bool isHigh = true;
 void diganosticsTimerCallback(TimerHandle_t timer) {
-  digitalWrite(REDLED_PIN, isHigh);
-
   isHigh = !isHigh;
 }
 
 void setup() {
-  pinMode(REDLED_PIN, OUTPUT);
-  drawBridgeServo.attach(DRAWBRIDGESERVO_PIN);
+  pinMode(HACKYGROUND_PIN, OUTPUT);
+  digitalWrite(HACKYGROUND_PIN, LOW);
   
-  drawBridgeServo.write(0);
+  pinMode(BRIDGEUP_PIN, INPUT_PULLDOWN);
+  drawBridgeServo.attach(DRAWBRIDGESERVO_PIN, 500, 2400);
+
+  pinMode(HACKY3V_PIN, OUTPUT);
+  digitalWrite(HACKY3V_PIN, HIGH);
+  
+  pinMode(RELEASESERVOATBOTTOM_PIN, INPUT_PULLDOWN);
+
+  releaseServo.attach(RELEASESERVO_PIN, 500, 2400);
+
+  releaseServo.write(95);
+  drawBridgeServo.write(95);
   servoTarget = 0;
   servoCurrent = 0;
-  servoMove.Start();
 
   Serial.begin(115200);
   while (!Serial) { }
@@ -186,26 +201,44 @@ void setup() {
   ConnectToMqtt();
 }
 
-long ledsOffTime = -1;
-bool isOpen = false;
+bool hasRaisedDrawBridge = true;
 void loop() {
   wifiManager.wifi_loop();
 
-  if (millis() > ledsOffTime) {
-    digitalWrite(REDLED_PIN, LOW);
+Serial.println(digitalRead(RELEASESERVOATBOTTOM_PIN));
+
+  if (digitalRead(RELEASESERVOATBOTTOM_PIN) && !releaseCarTimer.IsRunning()) {
+    releaseServo.write(60);
+    releaseCarTimer.Start();
   }
 
-  if ((millis() / 1000) % 2 == 0) {
-    drawBridgeServo.write(90);
+  if (releaseCarTimer.Check()) {
+    releaseCarTimer.Stop();
+    releaseServo.write(95);
   }
-/*
-  if (servoMove.Check() && (int)(10 * servoTarget) != (int)(10 * servoCurrent)) {
-    if (servoCurrent < servoTarget) {
-      servoCurrent += 0.1;
-      chestServo.write(servoCurrent);
-    } else if (servoCurrent > servoTarget) {
-      servoCurrent -= 0.1;
-      chestServo.write(servoCurrent);
+
+  if (lowerDrawBridgeTimer.IsRunning()) {
+    hasRaisedDrawBridge = false;
+    drawBridgeServo.write(130);
+    
+    if (lowerDrawBridgeTimer.Check()) {
+      drawBridgeServo.write(95);
+      lowerDrawBridgeTimer.Stop();
+
+      drawBridgeDownTimer.Start();
     }
-  }*/
+  }
+
+  if (drawBridgeDownTimer.Check()) {
+    drawBridgeDownTimer.Stop();
+
+    drawBridgeServo.write(60);
+  }
+
+  if (digitalRead(BRIDGEUP_PIN) && !hasRaisedDrawBridge && !lowerDrawBridgeTimer.IsRunning()) {
+    hasRaisedDrawBridge = true;
+    
+    drawBridgeServo.write(110);
+    drawBridgeServo.write(98);
+  }
 }
