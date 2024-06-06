@@ -14,10 +14,9 @@ namespace HotWheels
         {
             // TODO: Send a "LowerDrawbridge" command at the right time
             var so = new SendOptions();
-            so.DelayDeliveryWith(message.TimeUntilNextCarReleased + TimeSpan.FromSeconds(2));
+            so.DelayDeliveryWith(TimeSpan.FromSeconds(2));
 
             await context.Send(new LowerDrawbridge(), so);
-            await Task.Delay(1, context.CancellationToken);
         }
     }
 }

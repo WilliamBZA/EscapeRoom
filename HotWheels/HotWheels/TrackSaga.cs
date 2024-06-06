@@ -23,7 +23,7 @@ namespace HotWheels
         public async Task Timeout(ReleaseCar state, IMessageHandlerContext context)
         {
             var random = new Random();
-            var timeUntilNextRelease = TimeSpan.FromSeconds(30 + random.Next(30));
+            var timeUntilNextRelease = TimeSpan.FromSeconds(15 + random.Next(30));
 
             await context.Publish(new CarReleased { TimeUntilNextCarReleased = timeUntilNextRelease });
 
@@ -33,9 +33,7 @@ namespace HotWheels
         protected override void ConfigureHowToFindSaga(SagaPropertyMapper<HotWheelsSaga> mapper)
         {
             mapper.MapSaga(saga => saga.SagaId)
-                .ToMessage<StartHotWheelsTrack>(msg => msg.Event);
-
-            mapper.MapSaga(saga => saga.SagaId)
+                .ToMessage<StartHotWheelsTrack>(msg => msg.Event)
                 .ToMessage<LowerDrawbridge>(msg => msg.Event);
         }
     }
