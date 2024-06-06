@@ -25,7 +25,7 @@ int topicCount = 0;
 
 Timer releaseCarTimer(1300);
 Timer lowerDrawBridgeTimer(900);
-Timer drawBridgeDownTimer(650);
+Timer drawBridgeDownTimer(1000);
 float servoTarget = 0;
 float servoCurrent = 0;
 Servo drawBridgeServo;
@@ -142,6 +142,7 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
   if (topic == "escaperoom/puzzles/hotwheels/lowerdrawbridge" && !lowerDrawBridgeTimer.IsRunning()) {
     lowerDrawBridgeTimer.Start();
   } else if (topic == "escaperoom/puzzles/hotwheels/releasecar") {
+    Serial.println("Starting release process");
     releaseServo.write(30);
   }
 }
@@ -204,8 +205,6 @@ void setup() {
 bool hasRaisedDrawBridge = true;
 void loop() {
   wifiManager.wifi_loop();
-
-Serial.println(digitalRead(RELEASESERVOATBOTTOM_PIN));
 
   if (digitalRead(RELEASESERVOATBOTTOM_PIN) && !releaseCarTimer.IsRunning()) {
     releaseServo.write(60);
