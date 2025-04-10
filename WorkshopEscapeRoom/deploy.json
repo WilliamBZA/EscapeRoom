@@ -1,0 +1,43 @@
+{
+    "serialport":"COM3",
+    "files": [{
+        "DestinationFilePath": "I:\\css\\bootstrap.min.css",
+        "SourceFilePath": "wwwroot\\css\\bootstrap.min.css"
+    }, {
+        "DestinationFilePath": "I:\\img\\build.png",
+        "SourceFilePath": "wwwroot\\img\\build.png"
+    }, {
+        "DestinationFilePath": "I:\\img\\buildlog.png",
+        "SourceFilePath": "wwwroot\\img\\buildlog.png"
+    }, {
+        "DestinationFilePath": "I:\\img\\comtarget.png",
+        "SourceFilePath": "wwwroot\\img\\comtarget.png"
+    }, {
+        "DestinationFilePath": "I:\\img\\deploylog.png",
+        "SourceFilePath": "wwwroot\\img\\deploylog.png"
+    }, {
+        "DestinationFilePath": "I:\\img\\deployproject.png",
+        "SourceFilePath": "wwwroot\\img\\deployproject.png"
+    }, {
+        "DestinationFilePath": "I:\\img\\selectsolution.png",
+        "SourceFilePath": "wwwroot\\img\\selectsolution.png"
+    }, {
+        "DestinationFilePath": "I:\\js\\bootstrap.bundle.min.js",
+        "SourceFilePath": "wwwroot\\js\\bootstrap.bundle.min.js"
+    }, {
+        "DestinationFilePath": "I:\\css\\style.css",
+        "SourceFilePath": "wwwroot\\css\\style.css"
+    }, {
+        "DestinationFilePath": "I:\\favicon.ico",
+        "SourceFilePath": "wwwroot\\favicon.ico"
+    }, {
+        "DestinationFilePath": "I:\\img\\padlock.png",
+        "SourceFilePath": "wwwroot\\img\\padlock.png"
+    }, {
+        "DestinationFilePath": "I:\\index.html",
+        "SourceFilePath": "wwwroot\\index.html"
+    }, {
+        "DestinationFilePath": "I:\\files.html",
+        "SourceFilePath": "wwwroot\\files.html"
+    }]
+  }

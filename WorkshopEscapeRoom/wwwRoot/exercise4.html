@@ -1,0 +1,325 @@
+﻿<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Escape room fun!</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+    <div>
+        <div class="container">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <div class="container-fluid">
+                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Exercises</a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                    <li><a class="dropdown-item" href="exercise1.html">Exercise 1 - Intro to NanoFramework</a></li>
+                                    <li><a class="dropdown-item" href="exercise2.html">Exercise 2 - Turning devices on/off</a></li>
+                                    <li><a class="dropdown-item" href="exercise3.html">Exercise 3 - Responding to HTTP requests</a></li>
+                                    <li><a class="dropdown-item active" href="exercise4.html">Exercise 4 - Intro to Azure Service Bus</a></li>
+                                    <li><a class="dropdown-item" href="exercise5.html">Exercise 5 - Pub/Sub</a></li>
+                                    <li><a class="dropdown-item" href="exercise6.html">Exercise 6 - Dealing with failures</a></li>
+                                    <li><a class="dropdown-item" href="exercise7.html">Exercise 7 - Building an efficient pipeline</a></li>
+                                    <li><a class="dropdown-item" href="exercise8.html">Exercise 8 - Message Timeouts</a></li>
+                                    <li><a class="dropdown-item" href="exercise9.html">Exercise 9 - Rate Limiting</a></li>
+                                    <li><a class="dropdown-item" href="exercise10.html">Exercise 10 - Delayed Delivery</a></li>
+                                    <li><a class="dropdown-item" href="exercise11.html">Exercise 11 - Further patterns to learn</a></li>
+                                </ul>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/WilliamBZA/1DayDistributedSystemsThroughPlay/tree/main/">Code Repo</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/WilliamBZA/1DayDistributedSystemsThroughPlay/tree/main/exercises/solutions">Solutions</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <div class="container heading">
+            <div>
+                <h1>Exercise 4:</h1>
+                <h4>Introducing messaging</h4>
+            </div>
+        </div>
+        
+        <div class="container exercisedetails">
+            <div class="col-lg-12">
+                <ul class="nav nav-tabs" id="exercise-headings" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="gpio-tab" type="button" data-bs-toggle="tab" data-bs-target="#gpio-tab-content" role="tab" aria-controls="visualstudio-tab-content" aria-selected="false">
+                            Responding to messages
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="bonusexercise-tab" type="button" data-bs-toggle="tab" data-bs-target="#bonus-exercise-tab-content" role="tab" aria-controls="bonus-exercise-tab-content" aria-selected="true">
+                            Bonus exercises
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="exerciseContent">
+                    <div class="tab-pane show active" id="gpio-tab-content" role="tabpanel" aria-labelledby="gpio-tab" tabindex="0">
+                        <h3>Listening to ASB Messages</h3>
+
+                        <div>
+                            We're about to start our foray into message-based distributed systems! This is where the real fun begins.
+                        </div>
+                        <div>
+                            Instead of making HTTP calls to respond to events, messaging involves a sender, a receiver, and a broker. In this exercise we're going to
+                            be creating these three parts.
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step1">1. Create an Azure Service Bus Queue</h3>
+                        <div>
+                            Azure Service Bus is going to be our broker of choice in this workshop. We'll start of with the basics: creating a queue in a Service Bus instance.
+                        </div>
+                        <div>
+                            You've been given access to a Service Bus Resource in Azure Portal. Log in to Azure Portal, and find your Service Bus Resource. Everyone in the
+                            workshop is using the same service bus instance, so your queue will have to have a unique name.
+                        </div>
+
+                        <div>
+                            In the Azure Portal, navigate to the Service Bus Resource and click on the <code>+ Queue</code> link at the top of the page.
+                        </div>
+
+                        <img src="img/createqueuelink.png" />
+
+                        <div>
+                            Come up with a name for your device's queue - something fun but keep it clean 😉. This is the name of the queue that we will use to send messages to our device.
+                            In this example, I called my queue <code>TheDriveIn</code>. All of the other settings can be left as default for now - we'll cover what they
+                            are later. Once you've entered your queue's name, click <code>Create</code> to create the queue.
+                        </div>
+
+                        <img src="img/createqueue.png" />
+
+                        <div>
+                            It shouldn't take more than a couple minutes for Azure to create your queue for you. Once it's done, you'll see your queue in the list of queues
+                            at the bottom of the page.
+                        </div>
+
+                        <img src="img/queuecreated.png" />
+
+                        <div>
+                            With the queue now created, we have everything we need to be able to start using messages to communicate with our device.
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step2">2. Create a console application to send a message</h3>
+                        <div>
+                            We're going to start with a full .NET application instead of a NanoFramework application. This is mostly because we're just using NanoFramework
+                            as a way to introduce the distributed systems concepts. The actual takeaways that I hope you get out of this are how to use the full SDK
+                            for Azure Service Bus.
+                        </div>
+                        <div>
+                            Add a new Console Application project to the solution that the NanoFramework project is in. This Console Application should 
+                            target the latest .NET Framework.
+                        </div>
+                        <div>
+                            Add a reference to the <code>Azure.Messaging.ServiceBus</code> nuget package.
+                        </div>
+                        <div>
+                            Now you can add the code to send a message. Sending a message using the Azure SDK involves at a minimum:
+
+                            <ol>
+                                <li>Creating an instance of the <code>ServiceBusClient</code> class</li>
+                                <li>Using the <code>ServiceBusClient</code> to create a new instance of a <code>ServiceBusSender</code></li>
+                                <li>Create a new <code>ServiceBusMessage</code></li>
+                                <li>Set the body of the message to be the content of a <code>ToggleLEDs</code> object (for this exercide we'll do a string representation of JSON,
+                                    but more on this in later exercises)</li>
+                                <li>Send the message</li>
+                            </ol>
+                        </div>
+                        <div>
+                            The <code>ToggleLEDs</code> class should look like this:
+                        </div>
+                        <div>
+                            <pre>public class ToggleLEDs
+{
+    public string ToggleSource { get; set; }
+}</pre>
+                        </div>
+                        <div>
+                            When creating an instance of the <code>ServiceBusClient</code> you will require some way of connecting to the instance of ServiceBus. For our
+                            purposes, we will use the connection string from the Azure Portal for this.
+                        </div>
+                        <div>
+                            To get the connection string, open Azure Portal and find the <code>Settings -> Shared access policies</code>
+                        </div>
+                        <img src="img/accesspolicy.png" />
+                        <div>
+                            This will open a tab on the right of the screen. Over here you can either copy the Connection String (for the Console Application) or the AMQP
+                            connection string (for the NanoFramework application.)
+                        </div>
+                        <img src="img/connectionstring.png" />
+                        <div>
+                            Run your code. Your code should have now sent a message to the Azure Service Bus Queue. Let's validate that the message has been successfully
+                            sent:
+                        </div>
+
+                        <div>
+                            Navigate to the Service Bus instance in Azure Portal, and click on the queue that you created. On the next screen, click on the
+                            <code>Service Bus Explorer link</code>
+                        </div>
+                        <img src="img/findservicebusexplorer.png" />
+
+                        <div>
+                            If your message was correctly sent, you'll be able to Peek the message from the queue by clicking <code>Peek from start</code>
+                        </div>
+                        <img src="img/peek.png" />
+                        
+                        <div>
+                            Make sure you Peeked the message in <code>Peek mode</code> instead of <code>Receive mode</code>. Receive mode wll remove the message from the
+                            queue, whilst Peek mode will leave the message on the queue so that our code can receive that message later.
+                        </div>
+
+                        <div>
+                            Congratulations! If you've gotten this far, then you've successfully sent a message using Azure Service Bus 👏
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step3">3. Create a listener in NanoFramework</h3>
+                        <div>
+                            Now we'll pivot to NanoFramework to receive the message and process it. When communicating with Azure Service Bus with NanoFramework, we can't
+                            use the same SDK as in our console application. Instead we're going to use a package called
+                            <a href="https://azure.github.io/amqpnetlite/">AmqpNetLite</a>. This SDK uses the AMQP protocol that Azure exposes in order to interact
+                            with our queues.
+                        </div>
+
+                        <div>
+                            Open the Deployment project and add a nuget reference to <code>AMQPNetLite.nanoFramework</code>.
+                        </div>
+                        <div>
+                            Now that we have the Amqp SDK in our project, we can connect to our Service Bus and process messages in our queue. The general steps for
+                            this are:
+
+                            <ol>
+                                <li>Connecting to the Service Bus using the AMQP connection string as a parameter in the constructor for a <code>Connection</code> class</li>
+                                <li>Creating a new instance of a <code>Session</code> from the connection instance</li>
+                                <li>Creating a <code>ReceiverLink</code> with the session, link name (anything descriptive), and the queue name</li>
+                                <li>Receive a <code>Message</code> by calling the <code>.Receive()</code> method on the <code>ReceiverLink</code> instance</li>
+                            </ol>
+                        </div>
+
+                        <div>
+                            Once you've added the code to receive a message, deploy your application.
+                        </div>
+                        <div>
+                            Once your application has read the message from the queue, you should refresh the Service Bus Manager queue peek page and validate that there
+                            are no messages in the queue anymore.
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step4">4. Toggle the LEDs when a message comes in</h3>
+                        <div>
+                            Now that we've received a message, we can toggle the LEDs. Change your code to do that now.
+                        </div>
+                        <div>
+                            You'll see that the way our call to <code>.Receive()</code> works is that it only receives one message before stopping. This isn't really helpful
+                            as we'll probably want to respond to more than one message.
+                        </div>
+                        <div>
+                            To do that, we have to change our call to <code>.Receive()</code>. Instead of calling <code>.Receive()</code> on the <code>ReceiveLink</code>,
+                            change the call to <code>.Start</code>.
+                        </div>
+                        <div>
+                            <code>.Start</code> takes 2 parameters:
+                        </div>
+                        <div>
+                            <ol>
+                                <li>A <code>credit</code> <code class="blue">int</code></li>
+                                <li>An <code>onMessage</code> <code class="green">MessageCallback</code></li>
+                            </ol>
+                        </div>
+                        <div>
+                            The <code>credit</code> parameter tells AmqpNetLite how many messages to consume at a time. Set this to 5 for now.
+                        </div>
+                        <div>
+                            The <code>onMessage</code> parameter is the method that will be called whenever a message is received. You can either set this to a function, or
+                            and action. Here is what an action version would look like:
+                        </div>
+                        <div>
+                            <pre>receiverLink.Start(5, (receiver, message) =>
+{
+  // process message here
+});</pre>
+                        </div>
+                        <div>
+                            Now with this, your receiver link will receive more than one message so your Console Application should be able to send multiple toggle messages
+                            to the device to have it toggle multiple times.
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="bonus-exercise-tab-content" rold="tabpanel" aria-labelledby="bonusexercise-tab" tabindex="2">
+                        <h3>Bonus round!</h3>
+
+                        <div>
+                            Done already? Waiting for everyone else to finish? Why not tackle some of these bonus challenges?
+                        </div>
+
+                        <h3 class="breadcrumb">1. Make the NanoFramework listener send a message once it has toggled the LEDs</h3>
+                        <div>
+                            It's very rare that an application <i>only</i> listens and responds to incoming messages. More often than not, an application will receive incoming
+                            messages, do something, and then publish (we'll explore this soon) one or more events to let other interested applications know the result
+                            of the processing.
+                        </div>
+
+                        <div>
+                            See if you can extend your demo to:
+                        </div>
+                        <div>
+                            <ol>
+                                <li>Create a queue for your Console Application to receive messages</li>
+                                <li>
+                                    Send a <code>LedsToggled</code> message to that new queue everytime the LEDs have been toggled (either by pushing the button, or by
+                                    processing the <code>ToggleLeds</code> message
+                                </li>
+                                <li>
+                                    Change your Console Application to read messages from the new queue you created, and display to the console each time the LEDs are toggled
+                                </li>
+                            </ol>
+                        </div>
+                        <div>
+                            These changes mean that your Console Application will be able to tell your device to toggle the LEDs, and the device will be able to tell your
+                            console application whenever the LEDs have been toggled.
+                        </div>
+
+                        <h3 class="breadcrumb">2. What happens when the NanoFramework listener throws an exception?</h3>
+                        <div>
+                            Change your NanoFramework application to throw an exception when toggling an exception.
+                        </div>
+                        <div>
+                            <ul>
+                                <li>What does this do to your Console Application?</li>
+                                <li>Does the Console Application know that there has been an exception?</li>
+                                <li>What happens to the message in the queue?</li>
+                                <li>What if you throw the exception in different places of your code? Does that affect the behaviour?</li>
+                            </ul>
+                        </div>
+
+                        <h3 class="breadcrumb">3. How can you change your code to turn on/off instead of toggling?</h3>
+                        <div>
+                            Receiving a <code>ToggleLEDs</code> message is fine, but the caller doesn't know what state the LEDs are in when the message is sent.
+                            Change your code to instead allow the caller to determine which LED must be on and which must be off.
+                        </div>
+                        <div>
+                            Why would this be better or worse than a message that toggles the LEDs state?
+                        </div>
+                    </div>
+                    <div class="footer-nav">
+                        <a href="exercise3.html">&lt; Go to Exercise 3</a><a href="exercise5.html">Go to Exercise 5 &gt;</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

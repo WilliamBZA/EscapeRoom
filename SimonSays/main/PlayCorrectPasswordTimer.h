@@ -5,7 +5,7 @@
 
 class PlayCorrectPasswordTimer {
   public:
-    PlayCorrectPasswordTimer(void (*publishFunction)(char* topic, char* payload));
+    PlayCorrectPasswordTimer(void (*publishFunction)(int lightNum));
 
     void playPassword_loop();
     void start();
@@ -13,7 +13,7 @@ class PlayCorrectPasswordTimer {
   protected:
     long lastTriggerTime;
     int step;
-    void (*publishFunctionCallback)(char* topic, char* payload);
+    void (*publishFunctionCallback)(int lightNum);
 };
 
 #endif // calibrationtimer_h_

@@ -1,0 +1,70 @@
+﻿<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Escape room fun!</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <div>
+        <div class="container">
+            <div>
+                <h1>Files:</h1>
+            </div>
+        </div>
+        
+        <div class="container">
+            <div>
+                <form id="fileform" method="post" action="http://192.168.88.242/api/files" enctype="multipart/form-data">
+                    <div>
+                        <label for="file">File(s) to upload</label>
+                        <input type="file" id="file" name="file" multiple />
+                    </div>
+                    
+                    <div>
+                        <label for="subdir">Upload file in subdirectory:</label>
+                        <input type="text" id="subdir" value="" />
+                    </div>
+
+                    <button id="uploadFilesButton" type="button" class="btn btn-primary">Upload</button>
+                </form>
+            </div>
+        </div>
+
+
+        <div class="container">
+            <form id="deleteForm" method="delete" action="/api/files/deleteallfiles">
+                <button id="deleteAllFilesButton" type="button" class="btn btn-danger">Delete all files on device</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('deleteAllFilesButton').addEventListener('click', () => {
+            var form = document.getElementById('deleteForm');
+
+            return fetch(form.action, {
+                    method: 'DELETE',
+                    body: {}
+                }).then(response => response.json());
+        });
+
+        document.getElementById('uploadFilesButton').addEventListener('click', () => {
+            var form = document.getElementById('fileform');
+            var subdir = document.getElementById('subdir');
+
+            if (form.action.indexOf('?') == -1) {
+                form.action = form.action + '?subdir=' + subdir.value;
+            }
+
+            form.submit();
+        });
+    </script>
+</body>
+</html>

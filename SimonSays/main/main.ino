@@ -33,13 +33,13 @@ Timer deviceHeartbeatTimer(2000);
 Dictionary &deviceList = *(new Dictionary());
 String masterName;
 
-PlayCorrectPasswordTimer* correctGuessPlayer = new PlayCorrectPasswordTimer(PublishMqtt);
+PlayCorrectPasswordTimer* correctGuessPlayer = new PlayCorrectPasswordTimer(TurnLightOn);
 Timer incorrectGuessTimer(1500);
 Timer puzzleSolvedTimer(1500);
 
 long ledsOffTime = -1;
 int currentSolveIndex = 0;
-String unlockOrder[12] = {"simonsays30", "simonsays31", "simonsays20", "simonsays31", "simonsays20", "simonsays30", "simonsays21"};
+String unlockOrder[12] = {"simonsays10", "simonsays11", "simonsays10", "simonsays11", "simonsays10", "simonsays10", "simonsays11", "simonsays10", "simonsays10", "simonsays11", "simonsays11", "simonsays10"};
 
 void displayCorrectPassword() {
   correctGuessPlayer->start();
@@ -112,6 +112,31 @@ void SuscribeMqtt() {
   subscribeTo("escaperoom/puzzles/simonsays/puzzlesolved");
   subscribeTo((topic + "0").c_str());
   subscribeTo((topic + "1").c_str());
+}
+
+void TurnLightOn(int lightNum) {
+  if (lightNum == 0) {
+    digitalWrite(REDLED_PIN, HIGH);
+  } else {
+    digitalWrite(GREENLED_PIN, HIGH);
+  }
+    ledsOffTime = millis() + 750;
+}
+
+void ButtonPushed(int buttonNum) {
+  if (unlockOrder[currentSolveIndex] == settings->deviceName + String(buttonNum)) {
+      Serial.println("Good next guess");
+      currentSolveIndex++;
+
+      if (currentSolveIndex >= 12) {
+        PublishMqtt("escaperoom/puzzles/simonsays/puzzlesolved", "");
+        PublishMqtt("escaperoom/puzzles/hardtreasurechest/unlock", "");
+        currentSolveIndex = 0;
+      }
+    } else {
+      Serial.println("Incorrect button pushed!");
+      incorrectPassword();
+    }
 }
 
 void PublishMqtt(char* topic, char* payload) {
@@ -245,7 +270,7 @@ void OnMqttReceived(char* cTopic, char* payload, AsyncMqttClientMessagePropertie
       Serial.println("Good next guess");
       currentSolveIndex++;
 
-      if (currentSolveIndex >= 16) {
+      if (currentSolveIndex >= 12) {
         PublishMqtt("escaperoom/puzzles/simonsays/puzzlesolved", "");
         PublishMqtt("escaperoom/puzzles/hardtreasurechest/unlock", "");
         currentSolveIndex = 0;
@@ -484,8 +509,10 @@ void loop() {
     digitalWrite(REDLED_PIN, HIGH);
     ledsOffTime = debounceTimer;
     
-    String payload = "{\"deviceId\": \"" + settings->deviceName + "\", \"buttonNumber\": \"0\"}";
-    PublishMqtt("escaperoom/puzzles/simonsays/buttonpushed", (char*)payload.c_str());
+    //String payload = "{\"deviceId\": \"" + settings->deviceName + "\", \"buttonNumber\": \"0\"}";
+    //PublishMqtt("escaperoom/puzzles/simonsays/buttonpushed", (char*)payload.c_str());
+
+    ButtonPushed(0);
   }
 
   if (digitalRead(RIGHT_BUTTON_PIN) && debounceTimer <= millis()) {
@@ -493,7 +520,8 @@ void loop() {
     digitalWrite(GREENLED_PIN, HIGH);
     ledsOffTime = debounceTimer;
     
-    String payload = "{\"deviceId\": \"" + settings->deviceName + "\", \"buttonNumber\": \"1\"}";
-    PublishMqtt("escaperoom/puzzles/simonsays/buttonpushed", (char*)payload.c_str());
+    //String payload = "{\"deviceId\": \"" + settings->deviceName + "\", \"buttonNumber\": \"1\"}";
+    //PublishMqtt("escaperoom/puzzles/simonsays/buttonpushed", (char*)payload.c_str());
+    ButtonPushed(1);
   }
 }

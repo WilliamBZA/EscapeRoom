@@ -1,6 +1,6 @@
 #include "PlayCorrectPasswordTimer.h"
 
-PlayCorrectPasswordTimer::PlayCorrectPasswordTimer(void (*publishFunction)(char* topic, char* payload)) {
+PlayCorrectPasswordTimer::PlayCorrectPasswordTimer(void (*publishFunction)(int lightNum)) {
   publishFunctionCallback = publishFunction;
   lastTriggerTime = -1;
   step = 1;
@@ -18,63 +18,63 @@ void PlayCorrectPasswordTimer::playPassword_loop() {
     if (millis() - lastTriggerTime >= 1000) {
       switch (step) {
         case 0:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/0", "");
+          publishFunctionCallback(0);
           break;
 
         case 1:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/1", "");
+          publishFunctionCallback(1);
           break;
   
         case 2:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/0", "");
+          publishFunctionCallback(0);
           break;
   
         case 3:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/1", "");
+          publishFunctionCallback(1);
           break;
   
         case 4:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/0", "");
+          publishFunctionCallback(0);
           break;
   
         case 5:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/0", "");
+          publishFunctionCallback(0);
           break;
   
         case 6:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/1", "");
+          publishFunctionCallback(1);
           break;
   
         case 7:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/0", "");
+          publishFunctionCallback(0);
           break;
   
         case 8:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays1/0", "");
+          publishFunctionCallback(0);
           break;
   
         case 9:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays1/1", "");
+          publishFunctionCallback(1);
           break;
   
         case 10:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/1", "");
+          publishFunctionCallback(0);
           break;
   
         case 11:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/0", "");
+          publishFunctionCallback(0);
           break;
 
         case 12:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays2/1", "");
+          publishFunctionCallback(1);
           break;
   
         case 13:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/1", "");
+          publishFunctionCallback(1);
           break;
   
         case 14:
-          publishFunctionCallback("escaperoom/puzzles/simonsays/simonsays3/0", "");
+          publishFunctionCallback(0);
           break;
   
         default:

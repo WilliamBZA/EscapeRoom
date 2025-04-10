@@ -33,6 +33,11 @@ void Settings::loadDeviceSettings() {
     return;
   }
 
+  deviceName = "easymagunlock";
+  ssid = "dropitlikeaSquat";
+  wifiPassword = "DaisyToddAndButt";
+  
+
   StaticJsonDocument<384> doc;
 
   DeserializationError error = deserializeJson(doc, settingsFile);

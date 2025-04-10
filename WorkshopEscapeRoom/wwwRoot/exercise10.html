@@ -1,0 +1,219 @@
+﻿<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Escape room fun!</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+    <div>
+        <div class="container">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <div class="container-fluid">
+                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Exercises</a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                    <li><a class="dropdown-item" href="exercise1.html">Exercise 1 - Intro to NanoFramework</a></li>
+                                    <li><a class="dropdown-item" href="exercise2.html">Exercise 2 - Turning devices on/off</a></li>
+                                    <li><a class="dropdown-item" href="exercise3.html">Exercise 3 - Responding to HTTP requests</a></li>
+                                    <li><a class="dropdown-item" href="exercise4.html">Exercise 4 - Intro to Azure Service Bus</a></li>
+                                    <li><a class="dropdown-item" href="exercise5.html">Exercise 5 - Pub/Sub</a></li>
+                                    <li><a class="dropdown-item" href="exercise6.html">Exercise 6 - Dealing with failures</a></li>
+                                    <li><a class="dropdown-item" href="exercise7.html">Exercise 7 - Building an efficient pipeline</a></li>
+                                    <li><a class="dropdown-item" href="exercise8.html">Exercise 8 - Message Timeouts</a></li>
+                                    <li><a class="dropdown-item" href="exercise9.html">Exercise 9 - Rate Limiting</a></li>
+                                    <li><a class="dropdown-item active" href="exercise10.html">Exercise 10 - Delayed Delivery</a></li>
+                                    <li><a class="dropdown-item" href="exercise11.html">Exercise 11 - Further patterns to learn</a></li>
+                                </ul>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/WilliamBZA/1DayDistributedSystemsThroughPlay/tree/main/">Code Repo</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/WilliamBZA/1DayDistributedSystemsThroughPlay/tree/main/exercises/solutions">Solutions</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <div class="container heading">
+            <div>
+                <h1>Exercise 10:</h1>
+                <h4>Delayed delivery</h4>
+            </div>
+        </div>
+        
+        <div class="container exercisedetails">
+            <div class="col-lg-12">
+                <ul class="nav nav-tabs" id="exercise-headings" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="gpio-tab" type="button" data-bs-toggle="tab" data-bs-target="#gpio-tab-content" role="tab" aria-controls="visualstudio-tab-content" aria-selected="false">
+                            Delayed delivery
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="bonusexercise-tab" type="button" data-bs-toggle="tab" data-bs-target="#bonus-exercise-tab-content" role="tab" aria-controls="bonus-exercise-tab-content" aria-selected="true">
+                            Bonus exercises
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="exerciseContent">
+                    <div class="tab-pane show active" id="gpio-tab-content" role="tabpanel" aria-labelledby="gpio-tab" tabindex="0">
+                        <div>
+                            Sometimes, a message needs to be delivered but not right away. Maybe your system isn't ready for it yet. Maybe you're doing some cleanup before
+                            processing. Or maybe you just want it to be processed in the future, at a specific time. Whatever the reason, Azure Service Bus gives you a tool to help: <strong>scheduled messages</strong>.
+                        </div>
+                        <div>
+                            Scheduled messages allow you to publish a message now and have it become visible to receivers at a later time. This lets you handle delayed
+                            processing without needing extra timers or background jobs. Whether you want to build a retry mechanism, time-based notification system,
+                            or staggered command pattern, message scheduling is a powerful tool to have in your belt.
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step1">1. Schedule a message for the future</h3>
+                        <div>
+                            To schedule a message, you can use the <code>ScheduleMessageAsync</code> method on the <code>ServiceBusSender</code> class. Just set the message contents and the
+                            <code>scheduledEnqueueTime</code> to a future <code>DateTimeOffset</code>.
+                        </div>
+                        <div>
+                            <pre style="font-family:Cascadia Mono;font-size:13px;color:black;background:white;"><span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">futureTime</span>&nbsp;=&nbsp;<span style="color:#066555;">DateTimeOffset</span>.UtcNow.<span style="color:#74531f;">AddMinutes</span>(5);
+<span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">message</span>&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#066555;">ServiceBusMessage</span>(<span style="color:#a31515;">&quot;This&nbsp;is&nbsp;a&nbsp;scheduled&nbsp;message&quot;</span>);
+
+<span style="color:#8f08c4;">await</span>&nbsp;<span style="color:#1f377f;">sender</span>.<span style="color:#74531f;">ScheduleMessageAsync</span>(<span style="color:#1f377f;">message</span>,&nbsp;<span style="color:#1f377f;">futureTime</span>);
+</pre>
+                        </div>
+                        <div>
+                            The message will now be enqueued at the time you specified. Until then, it's held by Azure Service Bus and won't be delivered to any receiver.
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step2">2. Observe how scheduled delivery affects processing</h3>
+                        <div>
+                            Try scheduling several messages at different times (maybe 30 seconds apart) and observe how your receiver picks them up and on what schedule.
+                            This helps visualize how Azure's internal clock governs delivery time.
+                        </div>
+                        <div>
+                            <pre style="font-family:Cascadia Mono;font-size:13px;color:black;background:white;"><span style="color:#8f08c4;">for</span>&nbsp;(<span style="color:blue;">int</span>&nbsp;<span style="color:#1f377f;">i</span>&nbsp;=&nbsp;0;&nbsp;<span style="color:#1f377f;">i</span>&nbsp;&lt;&nbsp;5;&nbsp;<span style="color:#1f377f;">i</span>++)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">delay</span>&nbsp;=&nbsp;<span style="color:#066555;">TimeSpan</span>.<span style="color:#74531f;">FromSeconds</span>(10&nbsp;*&nbsp;<span style="color:#1f377f;">i</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">scheduledTime</span>&nbsp;=&nbsp;<span style="color:#066555;">DateTimeOffset</span>.UtcNow.<span style="color:#74531f;">Add</span>(<span style="color:#1f377f;">delay</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">msg</span>&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#066555;">ServiceBusMessage</span>(<span style="color:#a31515;">$&quot;</span><span style="color:#a31515;">Scheduled&nbsp;message&nbsp;</span>{<span style="color:#1f377f;">i</span>}<span style="color:#a31515;">&quot;</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8f08c4;">await</span>&nbsp;<span style="color:#1f377f;">sender</span>.<span style="color:#74531f;">ScheduleMessageAsync</span>(<span style="color:#1f377f;">msg</span>,&nbsp;<span style="color:#1f377f;">scheduledTime</span>);
+}
+</pre>
+                        </div>
+                        <div>
+                            Run your receiver and notice the gaps between messages arriving.
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step3">3. Using scheduled messages for delayed retries</h3>
+                        <div>
+                            Let's say your message handler catches a transient failure—maybe a database is down or an API times out. You don't want to retry immediately because it
+                            could just fail again. Instead, you can send a replacement message back to the same queue or topic with a scheduled delay.
+                        </div>
+                        <div>
+                            <pre style="font-family:Cascadia Mono;font-size:13px;color:black;background:white;"><span style="color:#8f08c4;">catch</span>&nbsp;(<span style="color:#066555;">Exception</span>&nbsp;<span style="color:#1f377f;">ex</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">retryMessage</span>&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#066555;">ServiceBusMessage</span>(<span style="color:#1f377f;">originalMessage</span>.Body);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#1f377f;">retryMessage</span>.ContentType&nbsp;=&nbsp;<span style="color:#1f377f;">originalMessage</span>.ContentType;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#1f377f;">retryMessage</span>.ApplicationProperties[<span style="color:#a31515;">&quot;retry-attempt&quot;</span>]&nbsp;=&nbsp;<span style="color:#1f377f;">attempt</span>&nbsp;+&nbsp;1;
+
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">scheduledTime</span>&nbsp;=&nbsp;<span style="color:#066555;">DateTimeOffset</span>.UtcNow.<span style="color:#74531f;">AddMinutes</span>(1);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8f08c4;">await</span>&nbsp;<span style="color:#1f377f;">sender</span>.<span style="color:#74531f;">ScheduleMessageAsync</span>(<span style="color:#1f377f;">retryMessage</span>,&nbsp;<span style="color:#1f377f;">scheduledTime</span>);
+}
+</pre>
+                        </div>
+                        <div>
+                            By scheduling the message again in the <code>catch</code> block, we can take the message from the queue and process it later.
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step4">4. Why Not Just Use Polly's WaitAndRetry?</h3>
+                        <div>
+                            You might be wondering: can't I just use Polly's <code>WaitAndRetry</code> to delay retries? And you can, but there's a catch...
+                        </div>
+                        <div>
+                            While Polly is waiting for the delayed retries to be processed, your application still has a <strong>lock on the message in the queue</strong>. If your message
+                            handler fails, it can wait and try again. But while it's waiting, it's blocking the thread. And more importantly: it's still holding the lock on
+                            the message. That means other messages can't be processed if you're not configured for concurrency. Worse, if the wait time is too long, the lock
+                            might expire and the message could get picked up again, causing double processing.
+                        </div>
+                        <div>
+                            Scheduled messages, on the other hand, allow you to fully release the current message and re-enqueue it for later. It's non-blocking, better for
+                            throughput, and works well in distributed systems where retry timing needs to outlive the current process.
+                        </div>
+                        <div>
+                            In order to see this effect, change your Processor to have a concurrency of 1 and send 1 message that will fail enough times to end up in
+                            the <code>WaitAndRetry</code> policy. Before starting your processor, send some extra messages that will all pass first time.
+                        </div>
+                        <div>
+                            Run your application and see how it behaves. What are the other messages doing while the processor is waiting for the retries?
+                        </div>
+
+                        <h3 class="breadcrumb" id="vs-step5">5. Change your processor to use scheduled messages for delayed retries</h3>
+                        <div>
+                            You can pair schedule messages with Polly for additional resiliency. For example, you might use a retry policy to catch short-term failures first,
+                            and only fall back to scheduling a retry if those quick retries fail.
+                        </div>
+                        <div>
+                            Your task is to convert your Polly Policies to use a Retry policy for immediate retries, and then use scheduled messages for the delayed retries.
+                        </div>
+                        <div>
+                            Run through the same example as in step 4 and see how the behaviour differs.
+                        </div>
+                        <div>
+                            In other words: change your Processor to have a concurrency of 1 and send 1 message that will fail enough times to end up in
+                            the <code>WaitAndRetry</code> policy. Before starting your processor, send some extra messages that will all pass first time.
+                        </div>
+                        <div>
+                            Run your application and see how it behaves. What are the other messages doing while the processor is waiting for the retries?
+                        </div>
+                        <div>
+                            When using scheduled messages instead of Polly's <code>WaitAndRetry</code> policy, you should see that the message that always fails is moved back to the
+                            queue after it's immediate retries. While it's waiting for it's schedule to elapse, the other messages in the queue can be processed.
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="bonus-exercise-tab-content" rold="tabpanel" aria-labelledby="bonusexercise-tab" tabindex="2">
+                        <h3>Bonus round!</h3>
+
+                        <div>
+                            Done already? Waiting for everyone else to finish? Why not tackle some of these bonus challenges?
+                        </div>
+
+                        <h3 class="breadcrumb">1. How can you change the delayed retry interval?</h3>
+                        <div>
+                            We want to be able to make the second delay retry wait longer than the first retry attempt.
+                        </div>
+                        <div>
+                            Change your code to use the exponential back-off we had when using Polly, but implement it using scheduled messages.
+                        </div>
+
+                        <h3 class="breadcrumb">2. What other uses could there be for scheduled messages?</h3>
+                        <div>
+                            Get creative here! There are some really fun and powerful applications of using scheduled messages.
+                        </div>
+                    </div>
+<<<<<<< Updated upstream
+                    <div>
+                        <a href="exercise11.html">Go to Exercise 11</a>
+=======
+                    <div class="footer-nav">
+                        <a href="exercise9.html">&lt; Go to Exercise 9</a><a href="exercise11.html">Go to Exercise 11 &gt;</a>
+>>>>>>> Stashed changes
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

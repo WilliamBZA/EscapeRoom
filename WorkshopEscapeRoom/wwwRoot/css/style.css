@@ -1,0 +1,80 @@
+﻿:root {
+    --bs-body-color: #000;
+}
+
+h1 {
+    text-align: left;
+}
+
+.tab-content {
+    margin: 2em;
+    padding-bottom: 4em;
+}
+
+.container.heading {
+    padding: 1em;
+}
+
+.exercisedetails img {
+  padding: 1em;
+  border: 3px dashed var(--bs-body-color);
+  border-radius: 1px;
+  margin: 2em;
+  max-width: 1000px;
+  max-height: 600px;
+}
+
+body {
+    background-color: var(--bs-gray-400);
+}
+
+body > div > div {
+    background-color: var(--bs-body-bg);
+}
+
+h3.breadcrumb {
+    margin: 1em 0;
+    font-size: x-large;
+}
+
+pre {
+    background-color: var(--bs-gray-400);
+    padding: 1em;
+    color: var(--bs-emphasis-color);
+}
+
+.nav-tabs .nav-link {
+    font-size: 2em;
+}
+
+.tab-pane > div,
+.tab-pane > div > div {
+    padding-bottom: 1em;
+}
+
+.red {
+    color: red;
+}
+
+.blue {
+    color: blue;
+}
+
+.green {
+    color: olivedrab;
+}
+
+.note {
+    background:#f9f9f9;
+    padding: 1rem;
+    border-left: 4px solid #4B9CD3;
+    margin: 1rem 0;
+<<<<<<< Updated upstream
+    font-style: italic;
+=======
+}
+
+.footer-nav a {
+    margin-right: 2em;
+>>>>>>> Stashed changes
+}
