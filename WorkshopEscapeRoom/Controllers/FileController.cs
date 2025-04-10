@@ -106,7 +106,7 @@ namespace _0.ValidatePrerequisites
 
 
 
-            var form = e.Context.Request.StreamFilePartsToStorage("I:\\");
+            //var form = e.Context.Request.StreamFilePartsToStorage("I:\\");
             //var files = form.Files;
 
             //var subDirectory = "";
