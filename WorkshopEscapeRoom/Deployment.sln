@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35806.99
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{11A8DD76-328B-46DF-9F39-F559912D0360}") = "ValidatePrerequisites", "ValidatePrerequisites.nfproj", "{C7F67AD0-18E5-4A53-9CBA-80A3B27DCA1A}"
+Project("{11A8DD76-328B-46DF-9F39-F559912D0360}") = "Deployment", "Deployment.nfproj", "{C7F67AD0-18E5-4A53-9CBA-80A3B27DCA1A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

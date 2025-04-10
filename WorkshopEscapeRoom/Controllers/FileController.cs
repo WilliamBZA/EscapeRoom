@@ -3,23 +3,20 @@ using System.Collections;
 using System.Net;
 using System.Text;
 using System.IO;
-using System.Diagnostics;
-using nanoFramework.System.IO.FileSystem;
 using System;
+using System.Diagnostics;
 
-namespace _0.ValidatePrerequisites
+namespace Deployment
 {
     public class FileController
     {
-        public static SDCard fileSystem = new SDCard();
-
         public const string DirectoryPath = "D:\\";
 
         [Route("api/files")]
         [Method("GET")]
         public void GetFiles(WebServerEventArgs e)
         {
-            string output = $"{{\"files\": [{ GetFilesInDirectoryIncludingSubdirectories("I:\\") }]}}";
+            string output = $"{{\"files\": [{ GetFilesInDirectoryIncludingSubdirectories(DirectoryPath) }]}}";
             
             e.Context.Response.ContentType = "application/json";
             WebServer.OutPutStream(e.Context.Response, output);
@@ -29,13 +26,13 @@ namespace _0.ValidatePrerequisites
         [Method("DELETE")]
         public void DeleteAllFiles(WebServerEventArgs e)
         {
-            var directories = Directory.GetDirectories("I:\\");
+            var directories = Directory.GetDirectories(DirectoryPath);
             foreach (var dir in directories)
             {
                 Directory.Delete(dir, true);
             }
 
-            var files = Directory.GetFiles("D:\\");
+            var files = Directory.GetFiles(DirectoryPath);
             foreach (var file in files)
             {
                 File.Delete(file);
@@ -64,85 +61,20 @@ namespace _0.ValidatePrerequisites
         [Method("POST")]
         public void AddFile(WebServerEventArgs e)
         {
-            /*
-            var filename = "I:\\text.txt";//GetHeaderValue(e.Context.Request.Headers, "filename");
-            if (filename.Length == 0)
+            var subDirectory = "";
+            if (e.Context.Request.RawUrl.ToLower().IndexOf("?") >= 0)
             {
-                //WebServer.OutputHttpCode(e.Context.Response, HttpStatusCode.BadRequest);
-                //return;
-            }
-
-            
-
-            var length = e.Context.Request.ContentLength64;
-            var body = new byte[1024];
-            var amountRead = e.Context.Request.InputStream.Read(body, 0, body.Length);
-
-            using (var file = File.Create(filename))
-            {
-                int position = 0;
-                while (amountRead != 0)
+                var parameters = WebServer.DecodeParam(e.Context.Request.RawUrl);
+                foreach (var param in parameters)
                 {
-                    file.Write(body, 0, amountRead);
-
-                    position += amountRead;
-
-                    amountRead = e.Context.Request.InputStream.Read(body, 0, body.Length);
+                    if (param.Name.ToLower() == "subdir")
+                    {
+                        subDirectory = param.Value;
+                    }
                 }
-
-                file.Close();
             }
-
-            */
-
-            //var data = UTF8Encoding.UTF8.GetString(body, 0, body.Length);
-            //Debug.WriteLine(data);
-
-            //string fullPath = $"{DirectoryPath}\\{(directory.Length > 0 ? directory + "\\" : "")}{filename}";
-            //Debug.WriteLine($"Uploading file to '{fullPath}'");
-
-            //File.WriteAllBytes(fullPath, body);
-
-
-
-
-            //var form = e.Context.Request.StreamFilePartsToStorage("I:\\");
-            //var files = form.Files;
-
-            //var subDirectory = "";
-            //foreach (var formParam in form.Parameters)
-            //{
-            //    if (formParam.Name == "subdir")
-            //    {
-            //        subDirectory = formParam.Data;
-            //    }
-            //}
-
-            //foreach (var file in files)
-            //{
-            //    string fullPath = $"{DirectoryPath}\\{(subDirectory.Length > 0 ? subDirectory + "\\" : "")}{file.FileName}";
-            //    Debug.WriteLine($"Uploading file to '{fullPath}'");
-
-            //    using (var writeFile = File.Create(fullPath))
-            //    {
-            //        file.Data.CopyTo(writeFile);
-            //    }
-            //}
 
             WebServer.OutputHttpCode(e.Context.Response, HttpStatusCode.Accepted);
-        }
-
-        private string GetHeaderValue(WebHeaderCollection headers, string headername)
-        {
-            foreach (var header in headers.AllKeys)
-            {
-                if (header.ToLower() == headername)
-                {
-                    return headers[header];
-                }
-            }
-
-            return "";
         }
 
         private string GetFilesInDirectoryIncludingSubdirectories(string directory)
@@ -175,16 +107,6 @@ namespace _0.ValidatePrerequisites
                 fileResult += $"\"{file}\"";
             }
 
-            foreach(var dir in directories)
-            {
-                if (fileResult.Length > 0)
-                {
-                    fileResult += ", ";
-                }
-
-                fileResult += $"\"'{dir}'\"";
-            }
-
             var finalResult = "";
             for (var x = 0; x < fileResult.Length; x++)
             {
@@ -204,23 +126,6 @@ namespace _0.ValidatePrerequisites
             }
 
             return fileResult + subDirResult;
-        }
-
-        public static bool MountSDCard()
-        {
-            try
-            {
-                fileSystem.Mount();
-                Debug.WriteLine("Card Mounted");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Card failed to mount : {ex.Message}");
-                Debug.WriteLine($"IsMounted {fileSystem.IsMounted}");
-            }
-
-            return false;
         }
     }
 }
