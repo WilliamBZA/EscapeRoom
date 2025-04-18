@@ -258,7 +258,7 @@ namespace ToneLock
                 new NoteElement(Note.F, Octave.Fourth, Duration.Quarter),
                 new NoteElement(Note.A, Octave.Fourth, Duration.Sixteenth),
                 new NoteElement(Note.A, Octave.Fourth, Duration.Quarter),
-                new NoteElement(Note.G, Octave.Fourth, Duration.Half)
+                new NoteElement(Note.G, Octave.Fourth, Duration.Half),
             };
         }
     }
