@@ -21,7 +21,7 @@ long debounceTimer;
 long ledOffTime;
 int currentPasswordIndex = 0;
 int passwordLength = 3;
-char password[9] = {"358"};
+char password[9] = {"352"};
 bool solved = false;
 
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);

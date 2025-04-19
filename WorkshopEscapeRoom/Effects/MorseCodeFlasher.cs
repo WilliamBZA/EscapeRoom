@@ -47,14 +47,11 @@ namespace Deployment
         {
             while (_isRunning)
             {
-                Eight();
-                Three();
-                Four();
-                Six();
-                Four();
-                Three();
-                One();
-                One();
+                C();
+                O();
+                D();
+                E();
+                S();
 
                 Thread.Sleep(2000);
             }
