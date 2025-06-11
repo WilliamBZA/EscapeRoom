@@ -54,9 +54,7 @@ namespace ToneLock
 
         private static void SuccessfullySolved()
         {
-            player.Play(GetVictorySequence(), 100);
-
-            var connection = new Connection(new Address("connection string"));
+            var connection = new Connection(new Address("amqps://RootManageSharedAccessKey:RJyx55XhgjDzcfikOIVqgt5Whn9zZAO6Q%2BASbA5nud0%3D@introtomessagingworkshop.servicebus.windows.net:5671/?verify=verify_none"));
             var session = new Session(connection);
             var sender = new SenderLink(session, "Tone lock 2.0", "tonelocksolved");
 
@@ -66,6 +64,8 @@ namespace ToneLock
             sender.Close();
             session.Close();
             connection.Close();
+
+            player.Play(GetVictorySequence(), 100);
         }
 
         private static void ConnectToWiFi()
